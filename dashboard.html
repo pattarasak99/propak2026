@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROPAK 2026 — Exhibition Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d0f1a;--surface:#141623;--surface2:#1c1f35;--surface3:#232640;
+  --accent:#c8102e;--accent2:#ff6b35;--accent3:#ffd166;--accent4:#06d6a0;
+  --text:#f0f1ff;--text2:#9899bb;--text3:#5a5c7a;
+  --border:rgba(255,255,255,0.06);
+  --glow:rgba(200,16,46,0.15);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* BACKGROUND */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% -10%,rgba(200,16,46,0.08) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(6,214,160,0.05) 0%,transparent 60%);pointer-events:none;z-index:0}
+
+.wrap{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+/* HEADER */
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.header-left{}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';width:20px;height:1.5px;background:var(--accent)}
+h1{font-family:'Syne',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-1px;color:var(--text);line-height:1.1}
+h1 span{color:var(--accent)}
+.last-update{margin-top:8px;font-size:12px;color:var(--text3)}
+.header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all 0.15s;border:none}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface3);color:var(--text)}
+.btn-primary{background:var(--accent);color:white}
+.btn-primary:hover{filter:brightness(1.15)}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.25rem 1.5rem;position:relative;overflow:hidden;transition:border-color 0.2s}
+.kpi-card:hover{border-color:rgba(255,255,255,0.12)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kpi-color,var(--accent))}
+.kpi-label{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.kpi-value{font-family:'Syne',sans-serif;font-size:clamp(32px,4vw,48px);font-weight:800;color:var(--text);line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:12px;color:var(--text2)}
+.kpi-icon{position:absolute;top:1.25rem;right:1.25rem;font-size:24px;opacity:0.4}
+
+/* SECTION */
+.section-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* CHARTS GRID */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.25rem 1.5rem}
+.chart-card.wide{grid-column:1/-1}
+.chart-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1rem}
+.chart-wrap{position:relative;width:100%}
+
+/* MACHINE BARS */
+.machine-bars{display:flex;flex-direction:column;gap:10px}
+.machine-bar-row{display:grid;grid-template-columns:160px 1fr 48px;gap:12px;align-items:center}
+.bar-label{font-size:13px;color:var(--text2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{background:var(--surface2);border-radius:4px;height:10px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 1s cubic-bezier(0.4,0,0.2,1)}
+.bar-count{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);text-align:right}
+
+/* TIMELINE PILLS */
+.timeline-grid{display:flex;gap:8px;flex-wrap:wrap}
+.tl-pill{flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;transition:border-color 0.15s}
+.tl-pill:hover{border-color:rgba(255,255,255,0.15)}
+.tl-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--tl-color,var(--accent3))}
+.tl-pct{font-size:11px;color:var(--text3);margin:2px 0}
+.tl-label{font-size:12px;color:var(--text2)}
+
+/* VISITOR TABLE */
+.visitor-table{width:100%;border-collapse:collapse;font-size:13px}
+.visitor-table thead tr{border-bottom:1px solid var(--border)}
+.visitor-table thead th{padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3)}
+.visitor-table tbody tr{border-bottom:1px solid var(--border);transition:background 0.12s}
+.visitor-table tbody tr:hover{background:var(--surface2)}
+.visitor-table tbody tr:last-child{border-bottom:none}
+.visitor-table td{padding:10px 12px;color:var(--text2)}
+.visitor-table td:first-child{color:var(--text);font-weight:500}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.tag-high{background:rgba(200,16,46,0.15);color:#ff6b6b}
+.tag-med{background:rgba(255,209,102,0.15);color:var(--accent3)}
+.tag-low{background:rgba(6,214,160,0.15);color:var(--accent4)}
+.tag-imm{background:rgba(200,16,46,0.15);color:#ff8080}
+.tag-short{background:rgba(255,107,53,0.15);color:var(--accent2)}
+.tag-mid{background:rgba(255,209,102,0.15);color:var(--accent3)}
+.tag-explore{background:rgba(90,92,122,0.3);color:var(--text3)}
+
+/* INTEREST HEAT */
+.interest-heat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.heat-item{background:var(--surface2);border-radius:10px;padding:12px;text-align:center}
+.heat-label{font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em}
+.heat-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:800}
+.heat-high{color:var(--accent)}
+.heat-med{color:var(--accent3)}
+.heat-low{color:var(--accent4)}
+
+/* LOADING */
+.loading{text-align:center;padding:4rem 1rem;color:var(--text3)}
+.spinner{width:40px;height:40px;border:3px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* INDUSTRY PILLS */
+.ind-list{display:flex;flex-direction:column;gap:8px}
+.ind-row{display:flex;align-items:center;gap:10px}
+.ind-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ind-name{font-size:13px;color:var(--text2);flex:1}
+.ind-bar-track{flex:2;background:var(--surface2);border-radius:3px;height:6px;overflow:hidden}
+.ind-bar-fill{height:100%;border-radius:3px;transition:width 1s}
+.ind-count{font-size:13px;font-weight:600;color:var(--text);width:30px;text-align:right}
+
+/* FOLLOW-UP */
+.followup-list{display:flex;flex-direction:column;gap:8px}
+.fu-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:8px}
+.fu-label{font-size:13px;color:var(--text2)}
+.fu-count{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
+
+/* EMPTY */
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:14px}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .charts-grid{grid-template-columns:1fr}
+  .chart-card.wide{grid-column:1}
+  .machine-bar-row{grid-template-columns:100px 1fr 36px}
+  .bar-label{font-size:11px}
+  .interest-heat{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">PROPAK 2026 · Exhibition Analytics</div>
+      <h1>Visitor <span>Dashboard</span></h1>
+      <div class="last-update" id="last-update">Loading data…</div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-ghost" onclick="loadData()">🔄 Refresh</button>
+      <a href="/" class="btn btn-ghost">📋 Form</a>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Loading from Google Sheets…</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api/sheets';
+let allRecords = [];
+
+// ── LOAD DATA ──
+async function loadData() {
+  document.getElementById('last-update').textContent = 'Loading…';
+  try {
+    const res = await fetch(API + '?action=getRecords');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    allRecords = (json.records || []).filter(r => r.name || r.company);
+    render();
+    document.getElementById('last-update').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString('th-TH') +
+      ' · ' + allRecords.length + ' visitor records';
+  } catch(e) {
+    document.getElementById('main-content').innerHTML =
+      '<div class="empty">⚠ Could not load data — ' + e.message + '<br><br><button class="btn btn-primary" onclick="loadData()">Try again</button></div>';
+    document.getElementById('last-update').textContent = 'Load failed';
+  }
+}
+
+// ── RENDER ALL ──
+function render() {
+  if (!allRecords.length) {
+    document.getElementById('main-content').innerHTML =
+      '<div class="empty">📋 No visitor records yet.<br>Start collecting data using the enquiry form.</div>';
+    return;
+  }
+
+  // Aggregate
+  const total       = allRecords.length;
+  const machineMap  = {};
+  const timelineMap = {};
+  const industryMap = {};
+  const interestCounts = {High:0,Medium:0,Low:0,None:0};
+  const followupMap = {};
+  const decisionMap = {};
+  let totalMachineSelections = 0;
+
+  allRecords.forEach(r => {
+    // Timeline
+    const tl = r.timeline || 'Not specified';
+    timelineMap[tl] = (timelineMap[tl]||0) + 1;
+
+    // Industry
+    const ind = (r.industry||'Not specified').replace(/^Other: /,'Other');
+    industryMap[ind] = (industryMap[ind]||0) + 1;
+
+    // Follow-up
+    (r.followup||'').split(', ').forEach(f => {
+      if(f) followupMap[f] = (followupMap[f]||0) + 1;
+    });
+
+    // Decision
+    const dec = r.decision_role||'Not specified';
+    decisionMap[dec] = (decisionMap[dec]||0) + 1;
+
+    // Machines
+    (r.machines||[]).forEach(m => {
+      if (!m.name) return;
+      if (!machineMap[m.name]) machineMap[m.name] = {total:0,High:0,Medium:0,Low:0};
+      machineMap[m.name].total++;
+      totalMachineSelections++;
+      const lv = m.interest||'None';
+      if (interestCounts[lv] !== undefined) interestCounts[lv]++;
+      else interestCounts.None++;
+      machineMap[m.name][lv] = (machineMap[m.name][lv]||0) + 1;
+    });
+  });
+
+  // Sort machines by total
+  const machines = Object.entries(machineMap).sort((a,b) => b[1].total - a[1].total);
+  const maxMachine = machines[0]?.[1]?.total || 1;
+
+  // Timeline order
+  const tlOrder = [
+    'Immediate (<3 months)',
+    'Short-term (3-6 months)',
+    'Mid-term (6-12 months)',
+    'Just exploring',
+  ];
+  const tlColors = {
+    'Immediate (<3 months)':  '--accent',
+    'Short-term (3-6 months)':'--accent2',
+    'Mid-term (6-12 months)': '--accent3',
+    'Just exploring':         '--text3',
+  };
+  const tlTagClass = {
+    'Immediate (<3 months)': 'tag-imm',
+    'Short-term (3-6 months)':'tag-short',
+    'Mid-term (6-12 months)':'tag-mid',
+    'Just exploring':'tag-explore',
+  };
+
+  // Industry colors
+  const indColors = ['#c8102e','#ff6b35','#ffd166','#06d6a0','#118ab2','#9b5de5','#8888aa'];
+  const industries = Object.entries(industryMap).sort((a,b) => b[1]-a[1]);
+  const maxInd = industries[0]?.[1] || 1;
+
+  // Visitors with machines sorted by count
+  const visitorsByMachine = [...allRecords].sort((a,b) =>
+    (b.machines||[]).length - (a.machines||[]).length
+  ).slice(0, 10);
+
+  document.getElementById('main-content').innerHTML = `
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--kpi-color:var(--accent)">
+        <div class="kpi-label">Total Visitors</div>
+        <div class="kpi-value">${total}</div>
+        <div class="kpi-sub">Enquiry records collected</div>
+        <div class="kpi-icon">👥</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent2)">
+        <div class="kpi-label">Machine Selections</div>
+        <div class="kpi-value">${totalMachineSelections}</div>
+        <div class="kpi-sub">${(totalMachineSelections/Math.max(total,1)).toFixed(1)} avg per visitor</div>
+        <div class="kpi-icon">⚙️</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent3)">
+        <div class="kpi-label">Immediate Interest</div>
+        <div class="kpi-value">${timelineMap['Immediate (<3 months)']||0}</div>
+        <div class="kpi-sub">${Math.round((timelineMap['Immediate (<3 months)']||0)/Math.max(total,1)*100)}% of visitors</div>
+        <div class="kpi-icon">⚡</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent4)">
+        <div class="kpi-label">High Interest Leads</div>
+        <div class="kpi-value">${interestCounts.High}</div>
+        <div class="kpi-sub">High-priority machine interest</div>
+        <div class="kpi-icon">🔴</div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:#9b5de5">
+        <div class="kpi-label">Decision Makers</div>
+        <div class="kpi-value">${decisionMap['Final decision maker']||0}</div>
+        <div class="kpi-sub">Final decision authority</div>
+        <div class="kpi-icon">👔</div>
+      </div>
+    </div>
+
+    <!-- ROW 1: Machine Interest + Timeline -->
+    <div class="charts-grid">
+
+      <!-- MACHINE INTEREST BAR -->
+      <div class="chart-card">
+        <div class="chart-title">⚙️ Machine Interest — Top ${Math.min(machines.length,10)}</div>
+        <div class="machine-bars">
+          ${machines.slice(0,10).map(([name,d]) => `
+            <div class="machine-bar-row">
+              <div class="bar-label" title="${name}">${name.replace(' machine','').replace(' Machine','')}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d.total/maxMachine*100)}%"></div></div>
+              <div class="bar-count">${d.total}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div class="chart-card" style="display:flex;flex-direction:column;gap:1rem">
+        <div class="chart-title">⏱ Purchasing Timeline</div>
+        <div class="timeline-grid">
+          ${tlOrder.map(tl => {
+            const n = timelineMap[tl]||0;
+            const pct = Math.round(n/Math.max(total,1)*100);
+            const label = tl.replace('Immediate (<3 months)','< 3 months')
+              .replace('Short-term (3-6 months)','3–6 months')
+              .replace('Mid-term (6-12 months)','6–12 months')
+              .replace('Just exploring','Just exploring');
+            return `<div class="tl-pill" style="--tl-color:var(${tlColors[tl]||'--text2'})">
+              <div class="tl-num">${n}</div>
+              <div class="tl-pct">${pct}%</div>
+              <div class="tl-label">${label}</div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <div class="chart-title" style="margin-top:0.5rem">🎯 Interest Level Breakdown</div>
+        <div class="interest-heat">
+          <div class="heat-item">
+            <div class="heat-label">High</div>
+            <div class="heat-val heat-high">${interestCounts.High}</div>
+          </div>
+          <div class="heat-item">
+            <div class="heat-label">Medium</div>
+            <div class="heat-val heat-med">${interestCounts.Medium}</div>
+          </div>
+          <div class="heat-item">
+            <div class="heat-label">Low</div>
+            <div class="heat-val heat-low">${interestCounts.Low}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INDUSTRY -->
+      <div class="chart-card">
+        <div class="chart-title">🏭 Industry Breakdown</div>
+        <div class="ind-list">
+          ${industries.map(([ind,n],i) => `
+            <div class="ind-row">
+              <div class="ind-dot" style="background:${indColors[i%indColors.length]}"></div>
+              <div class="ind-name">${ind}</div>
+              <div class="ind-bar-track">
+                <div class="ind-bar-fill" style="width:${Math.round(n/maxInd*100)}%;background:${indColors[i%indColors.length]}"></div>
+              </div>
+              <div class="ind-count">${n}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- FOLLOW-UP + DECISION -->
+      <div class="chart-card">
+        <div class="chart-title">📞 Preferred Follow-up</div>
+        <div class="followup-list">
+          ${Object.entries(followupMap).sort((a,b)=>b[1]-a[1]).map(([f,n]) => `
+            <div class="fu-row">
+              <div class="fu-label">${f}</div>
+              <div class="fu-count">${n}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="chart-title" style="margin-top:1.25rem">👔 Decision Role</div>
+        <div class="followup-list">
+          ${Object.entries(decisionMap).sort((a,b)=>b[1]-a[1]).map(([d,n]) => `
+            <div class="fu-row">
+              <div class="fu-label">${d}</div>
+              <div class="fu-count">${n}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VISITOR TABLE -->
+    <div class="section-title">Recent Visitors</div>
+    <div class="chart-card wide" style="overflow-x:auto">
+      <table class="visitor-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Company</th>
+            <th>Industry</th>
+            <th>Machines</th>
+            <th>Timeline</th>
+            <th>Budget (THB)</th>
+            <th>Follow-up</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...allRecords].reverse().slice(0,20).map(r => {
+            const tl = r.timeline||'';
+            const tlClass = tl.includes('Immediate')?'tag-imm':tl.includes('Short')?'tag-short':tl.includes('Mid')?'tag-mid':'tag-explore';
+            const mList = (r.machines||[]).map(m =>
+              `<span class="tag tag-${(m.interest||'').toLowerCase()||'explore'}">${m.name.split(' ')[0]}</span>`
+            ).join(' ');
+            return `<tr>
+              <td>${r.name||'—'}</td>
+              <td>${r.company||'—'}</td>
+              <td>${(r.industry||'—').replace(/^Other: /,'Other: ')}</td>
+              <td style="max-width:200px">${mList||'—'}</td>
+              <td>${tl?`<span class="tag ${tlClass}">${tl.split('(')[0].trim()}</span>`:'—'}</td>
+              <td>${r.budget?r.budget:'—'}</td>
+              <td style="font-size:12px">${r.followup||'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill, .ind-bar-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      requestAnimationFrame(() => { el.style.width = w; });
+    });
+  }, 50);
+}
+
+loadData();
+// Auto-refresh every 2 minutes
+setInterval(loadData, 120000);
+</script>
+</body>
+</html>

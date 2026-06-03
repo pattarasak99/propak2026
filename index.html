@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PROPAK 2026 — Machine Enquiry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#1a1a2e;--ink2:#4a4a6a;--muted:#8888aa;
+  --red:#c8102e;--red-l:#fdf0f2;--red-m:#f5c6ce;
+  --gold:#b8972a;--gold-l:#fdf8ec;
+  --green:#1a7a45;--green-l:#edf7f1;
+  --blue:#1a5fa8;
+  --border:#dde0ee;--bg:#f4f5fb;--white:#fff;
+  --radius:14px;--tap:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:540px;margin:0 auto;background:var(--white);box-shadow:0 0 40px rgba(0,0,0,0.12)}
+.topbar{background:var(--ink);color:white;padding:14px 16px 10px;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.topbar-title{flex:1}
+.topbar-title h1{font-size:17px;font-weight:600;letter-spacing:-0.2px}
+.topbar-title p{font-size:11px;color:rgba(255,255,255,0.55);margin-top:1px}
+.topbar-rec{background:var(--red);color:white;border:none;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.progress-wrap{background:var(--ink);padding:0 16px 14px;flex-shrink:0}
+.progress-steps{display:flex;gap:4px}
+.pstep{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,0.18);transition:background 0.3s}
+.pstep.done{background:var(--red)}.pstep.active{background:white}
+.progress-label{color:rgba(255,255,255,0.55);font-size:11px;margin-top:7px;text-align:center}
+.steps-container{flex:1;overflow:hidden;position:relative}
+.step{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 120px;display:none;opacity:0;transition:opacity 0.22s}
+.step.active{display:block;opacity:1}
+.step-hd{margin-bottom:20px}
+.step-hd h2{font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-0.4px}
+.step-hd p{font-size:14px;color:var(--muted);margin-top:4px}
+.field{margin-bottom:20px}
+.field-label{font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:8px;display:flex;align-items:center;gap:4px}
+.req{color:var(--red);font-size:14px}
+.field input[type=text],.field input[type=email],.field input[type=tel]{width:100%;height:var(--tap);border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:inherit;font-size:16px;color:var(--ink);padding:0 14px;outline:none;transition:border-color 0.18s,box-shadow 0.18s;-webkit-appearance:none;appearance:none}
+.field input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,0.1);background:white}
+.field textarea{width:100%;min-height:90px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:inherit;font-size:16px;color:var(--ink);padding:12px 14px;outline:none;resize:none;transition:border-color 0.18s;-webkit-appearance:none}
+.field textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,0.1);background:white}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.chip{padding:10px 16px;border:1.5px solid var(--border);border-radius:24px;font-size:15px;cursor:pointer;background:var(--bg);color:var(--ink);transition:all 0.15s;user-select:none;-webkit-user-select:none;line-height:1.3;min-height:44px;display:flex;align-items:center}
+.chip:active{transform:scale(0.96)}
+.chip.sel{background:var(--red);border-color:var(--red);color:white;font-weight:600}
+.chip.sel-multi{background:var(--ink);border-color:var(--ink);color:white}
+.machine-card{border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all 0.15s;background:var(--bg);position:relative;user-select:none;-webkit-user-select:none}
+.machine-card:active{transform:scale(0.985)}
+.machine-card.featured{background:var(--gold-l);border-color:#e0c97a}
+.machine-card.ticked{background:var(--red-l);border-color:var(--red)}
+.machine-card .mc-row{display:flex;align-items:center;gap:12px}
+.mc-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all 0.15s;color:transparent;background:white}
+.machine-card.ticked .mc-check{background:var(--red);border-color:var(--red);color:white}
+.mc-info{flex:1}
+.mc-name{font-size:15px;font-weight:600;color:var(--ink)}
+.mc-brand{font-size:12px;color:var(--muted);margin-top:1px}
+.feat-badge{display:inline-block;background:var(--gold);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
+.mc-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--red-m);display:none}
+.machine-card.ticked .mc-detail{display:block}
+.mc-detail-label{font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.interest-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.int-chip{padding:8px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;background:white;color:var(--ink2);transition:all 0.14s;min-height:40px;display:flex;align-items:center}
+.int-chip:active{transform:scale(0.96)}
+.int-chip.high.sel{background:#c8102e;border-color:#c8102e;color:white;font-weight:600}
+.int-chip.med.sel{background:#e07020;border-color:#e07020;color:white;font-weight:600}
+.int-chip.low.sel{background:#1a7a45;border-color:#1a7a45;color:white;font-weight:600}
+.qty-field{display:flex;align-items:center;gap:10px}
+.qty-field label{font-size:13px;color:var(--ink2);white-space:nowrap}
+.qty-field input{flex:1;height:42px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:inherit;font-size:15px;padding:0 12px;outline:none;-webkit-appearance:none}
+.qty-field input:focus{border-color:var(--red)}
+.bcard-section{background:var(--bg);border-radius:var(--radius);padding:16px;border:1.5px solid var(--border)}
+.bcard-slots{display:flex;gap:12px;margin-bottom:14px}
+.bcard-slot{flex:1;aspect-ratio:1.75;border:2px dashed var(--border);border-radius:10px;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;transition:border-color 0.15s;min-height:90px}
+.bcard-slot:active{transform:scale(0.97)}
+.bcard-slot.has-img{border-style:solid;border-color:var(--border)}
+.bcard-slot img{width:100%;height:100%;object-fit:cover}
+.bcard-slot .sl-icon{font-size:28px;opacity:0.35}
+.bcard-slot .sl-txt{font-size:11px;color:var(--muted);margin-top:4px;text-align:center}
+.bcard-slot .sl-del{position:absolute;top:5px;right:5px;width:22px;height:22px;background:rgba(200,16,46,0.85);color:white;border:none;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.bcard-slot .sl-side{position:absolute;bottom:0;left:0;right:0;background:rgba(26,26,46,0.6);color:white;font-size:10px;text-align:center;padding:2px 0}
+.bcard-btns{display:flex;gap:8px}
+.bcard-btn{flex:1;height:46px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity 0.15s;border:none}
+.bcard-btn:active{opacity:0.8}
+.bcard-btn-cam{background:var(--ink);color:white}
+.bcard-btn-file{background:white;color:var(--ink);border:1.5px solid var(--border)}
+.modal{display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.9);flex-direction:column;align-items:center;justify-content:flex-end}
+.modal.open{display:flex}
+.modal-box{background:white;border-radius:20px 20px 0 0;width:100%;max-width:540px;padding:16px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
+.side-toggle{display:flex;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:12px}
+.side-btn{flex:1;padding:9px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--muted);transition:all 0.15s}
+.side-btn.active{background:var(--ink);color:white}
+.video-wrap{width:100%;aspect-ratio:16/10;background:#111;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.video-wrap video{width:100%;height:100%;object-fit:cover}
+.cam-msg{color:#777;font-size:14px;text-align:center;padding:20px}
+.cam-shoot{width:100%;height:54px;background:var(--red);color:white;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.cam-shoot:active{opacity:0.85}
+.cam-confirm-row{display:flex;gap:8px}
+.cam-confirm-row button{flex:1;height:48px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;border:none}
+.lightbox{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:96vw;max-height:80vh;border-radius:10px}
+.lightbox button{color:white;background:rgba(255,255,255,0.15);border:none;padding:10px 24px;border-radius:20px;font-size:15px;cursor:pointer}
+.bottom-nav{flex-shrink:0;background:white;border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.nav-btn{flex:1;height:50px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity 0.15s}
+.nav-btn:active{opacity:0.8}
+.nav-back{background:var(--bg);color:var(--ink);border:1.5px solid var(--border)}
+.nav-next{background:var(--red);color:white}
+.nav-save{background:var(--ink);color:white}
+.records-view{display:none;position:fixed;inset:0;z-index:800;background:var(--white);flex-direction:column;max-width:540px;margin:0 auto}
+.records-view.open{display:flex}
+.rec-topbar{background:var(--ink);color:white;padding:14px 16px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.rec-topbar h2{flex:1;font-size:18px;font-weight:700}
+.rec-search-wrap{padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.rec-search{width:100%;height:44px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:16px;padding:0 14px;outline:none;background:var(--bg);-webkit-appearance:none}
+.rec-search:focus{border-color:var(--red)}
+.rec-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 24px}
+.rec-card{border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;background:white}
+.rec-card-top{background:var(--bg);padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rc-name{font-size:16px;font-weight:700;color:var(--ink)}
+.rc-company{font-size:13px;color:var(--ink2);margin-top:2px}
+.rc-ref{font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+.rec-card-mid{padding:10px 14px;display:flex;gap:10px;align-items:flex-start}
+.rec-info{flex:1;font-size:13px;color:var(--ink2);line-height:1.8}
+.rec-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.rec-tag{background:var(--red-l);color:var(--red);font-size:11px;padding:3px 8px;border-radius:10px;font-weight:500}
+.rec-cards-col{display:flex;flex-direction:column;gap:6px}
+.rec-thumb{width:90px;height:54px;object-fit:cover;border-radius:7px;border:1px solid var(--border);cursor:pointer}
+.rec-no-card{width:90px;height:54px;border:1px dashed var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--border)}
+.rec-actions{border-top:1px solid var(--border);display:flex}
+.rec-act-btn{flex:1;height:46px;border:none;background:transparent;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.rec-act-btn+.rec-act-btn{border-left:1px solid var(--border)}
+.rec-act-load{color:var(--ink)}.rec-act-dl{color:var(--green)}.rec-act-del{color:var(--red)}
+.rec-empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.rec-empty-icon{font-size:48px;margin-bottom:12px}
+.rec-bottom{border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:6px;flex-shrink:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+.rec-bottom button{flex:1;height:46px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:4px}
+.sync-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;margin-left:4px}
+.sync-ok{background:var(--green-l);color:var(--green)}
+.sync-pending{background:var(--gold-l);color:var(--gold)}
+.divider{height:1px;background:var(--border);margin:20px 0}
+.summary-card{background:var(--bg);border-radius:var(--radius);padding:14px;margin-bottom:12px;border:1.5px solid var(--border)}
+.summary-card h4{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
+.summary-row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px solid var(--border)}
+.summary-row:last-child{border-bottom:none}
+.summary-row .sl{color:var(--ink2)}.summary-row .sv{color:var(--ink);font-weight:500;text-align:right;max-width:60%}
+.bcard-preview-row{display:flex;gap:10px;margin-top:8px}
+.bcard-preview-row img{height:60px;border-radius:7px;border:1px solid var(--border);cursor:pointer}
+.toast{position:fixed;bottom:max(90px,calc(90px + env(safe-area-inset-bottom)));left:50%;transform:translateX(-50%) translateY(16px);background:rgba(26,26,46,0.95);color:white;padding:11px 20px;border-radius:24px;font-size:14px;font-weight:500;opacity:0;transition:all 0.3s;z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-title">
+      <h1>Machine Enquiry Form</h1>
+      <p>PROPAK 2026 · Pharmaceutical &amp; Packaging Machinery</p>
+    </div>
+    <button class="topbar-rec" onclick="openRecords()" id="rec-badge">📋 0 saved</button>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-steps" id="prog-steps"></div>
+    <div class="progress-label" id="prog-label"></div>
+  </div>
+  <div class="steps-container" id="steps-container">
+
+    <!-- STEP 0: VISITOR -->
+    <div class="step" id="step-0">
+      <div class="step-hd"><h2>👤 Visitor info</h2><p>Basic contact details</p></div>
+      <div class="field"><div class="field-label">Full name <span class="req">*</span></div><input type="text" id="f_name" placeholder="Your full name" autocomplete="name"></div>
+      <div class="field"><div class="field-label">Company <span class="req">*</span></div><input type="text" id="f_company" placeholder="Company / Organization" autocomplete="organization"></div>
+      <div class="field"><div class="field-label">Job title</div><input type="text" id="f_role" placeholder="e.g. Production Manager"></div>
+      <div class="field"><div class="field-label">Email <span class="req">*</span></div><input type="email" id="f_email" placeholder="your@email.com" autocomplete="email" inputmode="email"></div>
+      <div class="field"><div class="field-label">Phone / WhatsApp</div><input type="tel" id="f_phone" placeholder="+66 ..." autocomplete="tel" inputmode="tel"></div>
+      <div class="field"><div class="field-label">Country / City</div><input type="text" id="f_country" placeholder="e.g. Thailand, Vietnam"></div>
+    </div>
+
+    <!-- STEP 1: BUSINESS CARD -->
+    <div class="step" id="step-1">
+      <div class="step-hd"><h2>🪪 Business card</h2><p>Take a photo or upload an image</p></div>
+      <div class="bcard-section">
+        <div class="bcard-slots">
+          <div class="bcard-slot" id="slot-front" onclick="openCam('front')">
+            <div class="sl-icon">📷</div>
+            <div class="sl-txt">Front side<br><b style="color:var(--red)">Tap to add</b></div>
+          </div>
+          <div class="bcard-slot" id="slot-back" onclick="openCam('back')">
+            <div class="sl-icon">📷</div>
+            <div class="sl-txt">Back side<br><span style="color:var(--muted)">Optional</span></div>
+          </div>
+        </div>
+        <div class="bcard-btns">
+          <button class="bcard-btn bcard-btn-cam" onclick="openCam('front')">📷 Camera</button>
+          <button class="bcard-btn bcard-btn-file" onclick="document.getElementById('bc-file').click()">🖼 Gallery</button>
+          <input type="file" id="bc-file" accept="image/*" multiple style="display:none" onchange="handleUpload(event)">
+        </div>
+      </div>
+      <div style="margin-top:14px;font-size:13px;color:var(--muted);line-height:1.6;padding:12px;background:var(--bg);border-radius:10px">
+        💡 Tip: ถ่ายรูปนามบัตรทันทีหลังรับ สามารถข้ามขั้นตอนนี้ได้ถ้าไม่มี
+      </div>
+    </div>
+
+    <!-- STEP 2: INDUSTRY -->
+    <div class="step" id="step-2">
+      <div class="step-hd"><h2>🏭 Your business</h2><p>Help us understand your industry</p></div>
+      <div class="field">
+        <div class="field-label">Industry type <span class="req">*</span></div>
+        <div class="chips" id="g_industry">
+          <div class="chip" data-val="Pharmaceutical">💊 Pharmaceutical</div>
+          <div class="chip" data-val="Cosmetic & personal care">💄 Cosmetic</div>
+          <div class="chip" data-val="Food & beverage">🍱 Food &amp; beverage</div>
+          <div class="chip" data-val="Nutraceutical / supplement">🌿 Nutraceutical</div>
+          <div class="chip" data-val="Chemical / industrial">⚗️ Chemical</div>
+          <div class="chip" data-val="Other">Other</div>
+        </div>
+        <input type="text" id="f_ind_other" placeholder="Please specify industry" style="margin-top:10px;display:none;height:var(--tap);border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:16px;background:var(--bg);outline:none;width:100%;-webkit-appearance:none">
+      </div>
+      <div class="divider"></div>
+      <div class="field">
+        <div class="field-label">Purchasing timeline <span class="req">*</span></div>
+        <div class="chips" id="g_timeline">
+          <div class="chip" data-val="Immediate (<3 months)">⚡ &lt;3 months</div>
+          <div class="chip" data-val="Short-term (3-6 months)">📅 3–6 months</div>
+          <div class="chip" data-val="Mid-term (6-12 months)">🗓 6–12 months</div>
+          <div class="chip" data-val="Just exploring">🔍 Just exploring</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: MACHINES -->
+    <div class="step" id="step-3">
+      <div class="step-hd"><h2>⚙️ Machine interest</h2><p>Tap to select — set interest &amp; quantity</p></div>
+      <div style="background:var(--gold-l);border-left:3px solid var(--gold);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink2);margin-bottom:16px">
+        ★ <strong>Featured</strong> machines are on display at our booth
+      </div>
+      <div id="machine-list"></div>
+    </div>
+
+    <!-- STEP 4: TECHNICAL -->
+    <div class="step" id="step-4">
+      <div class="step-hd"><h2>🔧 Technical needs</h2><p>Production requirements</p></div>
+      <div class="field"><div class="field-label">Production capacity</div><input type="text" id="f_capacity" placeholder="e.g. 5,000 units/hr, 200 kg/batch"></div>
+      <div class="field"><div class="field-label">Container / product type</div><input type="text" id="f_container" placeholder="e.g. tube, bottle, sachet, vial"></div>
+      <div class="field">
+        <div class="field-label">Automation level</div>
+        <div class="chips" id="g_auto">
+          <div class="chip" data-val="Semi-automatic">Semi-auto</div>
+          <div class="chip" data-val="Fully automatic">Fully auto</div>
+          <div class="chip" data-val="Either / flexible">Flexible</div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Certification needed <span style="font-size:11px;color:var(--muted)">(multi)</span></div>
+        <div class="chips" id="g_cert">
+          <div class="chip" data-val="GMP" data-multi="1">GMP</div>
+          <div class="chip" data-val="CE marking" data-multi="1">CE</div>
+          <div class="chip" data-val="ISO standard" data-multi="1">ISO</div>
+        </div>
+      </div>
+      <div class="field"><div class="field-label">Special requirements</div><textarea id="f_special" placeholder="e.g. ATEX, clean room, cold chain, SS316L, OEB..."></textarea></div>
+    </div>
+
+    <!-- STEP 5: BUDGET -->
+    <div class="step" id="step-5">
+      <div class="step-hd"><h2>💰 Budget &amp; decision</h2><p>Helps us prepare the right proposal</p></div>
+      <div class="field">
+        <div class="field-label">Estimated budget (THB)</div>
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--ink2);font-weight:600;pointer-events:none">฿</span>
+          <input type="text" id="f_budget" inputmode="numeric" placeholder="e.g. 500,000"
+            style="width:100%;height:var(--tap);border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:inherit;font-size:16px;color:var(--ink);padding:0 14px 0 30px;outline:none;-webkit-appearance:none"
+            oninput="formatBudget(this)">
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Your role in decision</div>
+        <div class="chips" id="g_decision">
+          <div class="chip" data-val="Final decision maker">Decision maker</div>
+          <div class="chip" data-val="Influencer / recommender">Recommender</div>
+          <div class="chip" data-val="Technical evaluator">Technical eval</div>
+          <div class="chip" data-val="Researching only">Researching</div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Preferred follow-up <span style="font-size:11px;color:var(--muted)">(multi)</span></div>
+        <div class="chips" id="g_followup">
+          <div class="chip" data-val="Email / brochure" data-multi="1">📧 Email</div>
+          <div class="chip" data-val="Phone / WhatsApp" data-multi="1">📞 Phone/WhatsApp</div>
+          <div class="chip" data-val="Online meeting" data-multi="1">💻 Online meeting</div>
+          <div class="chip" data-val="Site visit" data-multi="1">🏭 Site visit</div>
+          <div class="chip" data-val="Formal quotation" data-multi="1">📄 Quotation</div>
+        </div>
+      </div>
+      <div class="field"><div class="field-label">Additional notes</div><textarea id="f_notes" placeholder="Any questions or specific requirements..."></textarea></div>
+    </div>
+
+    <!-- STEP 6: SUMMARY -->
+    <div class="step" id="step-6">
+      <div class="step-hd"><h2>✅ Review &amp; save</h2><p>Check details before saving</p></div>
+      <div id="summary-content"></div>
+    </div>
+
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn nav-back" id="btn-back" onclick="goBack()" style="display:none">← Back</button>
+    <button class="nav-btn nav-next" id="btn-next" onclick="goNext()">Next →</button>
+    <button class="nav-btn nav-save" id="btn-save" onclick="saveRecord()" style="display:none">💾 Save record</button>
+  </div>
+</div>
+
+<!-- RECORDS VIEW -->
+<div class="records-view" id="records-view">
+  <div class="rec-topbar">
+    <button style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:22px;cursor:pointer;padding:0 10px 0 0;line-height:1" onclick="closeRecords()">←</button>
+    <h2>Saved Records</h2>
+  </div>
+  <div class="rec-search-wrap">
+    <input type="text" class="rec-search" id="rec-search" placeholder="🔍 Search name or company..." oninput="renderRecords()">
+  </div>
+  <div class="rec-list" id="rec-list"></div>
+  <div class="rec-bottom">
+    <button style="background:var(--blue);color:white" onclick="loadFromSheets()">☁️ Load Sheets</button>
+    <button style="background:var(--green);color:white" onclick="exportExcel()">📊 Excel</button>
+    <button style="background:var(--bg);color:var(--red);border:1.5px solid var(--red-m)" onclick="clearAllRecs()">🗑 Clear</button>
+  </div>
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal" id="cam-modal">
+  <div class="modal-box">
+    <div class="modal-title">📷 Capture Business Card <button class="modal-close" onclick="closeCam()">✕</button></div>
+    <div class="side-toggle">
+      <button class="side-btn active" id="sb-front" onclick="setSide('front')">Front side</button>
+      <button class="side-btn" id="sb-back" onclick="setSide('back')">Back side</button>
+    </div>
+    <div class="video-wrap" id="video-wrap"><div class="cam-msg">Starting camera…</div></div>
+    <div id="cam-live"><button class="cam-shoot" onclick="shootPhoto()">📸 Capture photo</button></div>
+    <div id="cam-confirm" style="display:none">
+      <div class="cam-confirm-row">
+        <button style="background:var(--green);color:white" onclick="confirmPhoto()">✅ Use this photo</button>
+        <button style="background:var(--bg);color:var(--ink);border:1.5px solid var(--border)" onclick="retake()">🔄 Retake</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lb-img" src="" alt="">
+  <button onclick="closeLightbox()">✕ Close</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════
+const GS_URL='https://script.google.com/a/macros/medpac.co.th/s/AKfycbyG6mxpMCByIt8OKtxENjvU1HttN7UjjuXBak5-jyn2hwqnCZILaFGpIzsk4kFHJ2_h/exec';
+const API=window.location.hostname==='localhost'?GS_URL:'/api/sheets';
+
+const MACHINES=[
+  {id:'tube',  name:'Tube filling machine',      brand:'Wenzhou',       featured:true},
+  {id:'flow',  name:'Flow wrapping machine',      brand:'Feifang',       featured:true},
+  {id:'cart',  name:'Cartoning machine',          brand:'Jih Cheng',     featured:true},
+  {id:'tab',   name:'Tablet inspection machine',  brand:'Enclony',       featured:true},
+  {id:'label', name:'Labeling machine',           brand:'Shell-conning', featured:true},
+  {id:'liq',   name:'Liquid filling machine',     brand:'Jih Cheng',     featured:true},
+  {id:'roll',  name:'Roller compactor',           brand:'Wonsen',        featured:true},
+  {id:'other', name:'Other',                      brand:'',              featured:false, isOther:true},
+];
+
+const STEPS=[
+  {label:'Visitor'},{label:'Biz Card'},{label:'Business'},
+  {label:'Machines'},{label:'Technical'},{label:'Budget'},{label:'Review'},
+];
+
+let curStep=0;
+let bcards={front:null,back:null};
+let camStream=null,camSide='front',capturedUrl=null;
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+function init(){
+  buildProgress();
+  buildMachines();
+  initChips();
+  showStep(0);
+  updateCount();
+}
+
+function buildProgress(){
+  const wrap=document.getElementById('prog-steps');
+  wrap.innerHTML=STEPS.map((_,i)=>`<div class="pstep" id="ps-${i}"></div>`).join('');
+}
+
+function buildMachines(){
+  const list=document.getElementById('machine-list');
+  list.innerHTML=MACHINES.map(m=>{
+    const nameField=m.isOther
+      ?`<div class="mc-name">Other machine</div>
+        <input type="text" id="other-machine-name" placeholder="ระบุชื่อเครื่องจักร..." onclick="event.stopPropagation()"
+          style="margin-top:6px;width:100%;height:40px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-size:15px;font-family:inherit;background:white;outline:none;-webkit-appearance:none">`
+      :`<div class="mc-name">${m.name}${m.featured?'<span class="feat-badge">★ Featured</span>':''}</div>${m.brand?`<div class="mc-brand">Brand: ${m.brand}</div>`:''}`;
+    return`<div class="machine-card${m.featured?' featured':''}" id="mc-${m.id}" onclick="toggleMachine('${m.id}')">
+      <div class="mc-row"><div class="mc-check" id="mck-${m.id}">✓</div><div class="mc-info">${nameField}</div></div>
+      <div class="mc-detail" id="mcd-${m.id}">
+        <div class="mc-detail-label">Interest level</div>
+        <div class="interest-row" id="mir-${m.id}">
+          <div class="int-chip high" data-level="High" onclick="setInterest(event,'${m.id}','High')">🔴 High</div>
+          <div class="int-chip med"  data-level="Medium" onclick="setInterest(event,'${m.id}','Medium')">🟡 Medium</div>
+          <div class="int-chip low"  data-level="Low" onclick="setInterest(event,'${m.id}','Low')">🟢 Low</div>
+        </div>
+        <div class="qty-field">
+          <label>Quantity needed:</label>
+          <input type="text" id="qty-${m.id}" placeholder="e.g. 1 unit" inputmode="text" onclick="event.stopPropagation()">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleMachine(id){
+  const card=document.getElementById('mc-'+id);
+  card.classList.toggle('ticked');
+  const check=document.getElementById('mck-'+id);
+  check.style.color=card.classList.contains('ticked')?'white':'transparent';
+}
+
+function setInterest(e,id,level){
+  e.stopPropagation();
+  document.querySelectorAll(`#mir-${id} .int-chip`).forEach(c=>c.classList.remove('sel'));
+  e.currentTarget.classList.add('sel');
+  if(!document.getElementById('mc-'+id).classList.contains('ticked')) toggleMachine(id);
+}
+
+function initChips(){
+  document.querySelectorAll('.chips').forEach(g=>{
+    g.querySelectorAll('.chip').forEach(c=>{
+      c.addEventListener('click',function(){
+        const multi=this.dataset.multi==='1';
+        if(!multi){
+          g.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel'));
+          this.classList.add('sel');
+          if(g.id==='g_industry'){
+            document.getElementById('f_ind_other').style.display=this.dataset.val==='Other'?'block':'none';
+          }
+        } else {
+          this.classList.toggle('sel-multi');
+        }
+      });
+    });
+  });
+}
+
+// ══════════════════════════════════════
+// STEP NAVIGATION
+// ══════════════════════════════════════
+function showStep(n){
+  document.querySelectorAll('.step').forEach((s,i)=>s.classList.toggle('active',i===n));
+  STEPS.forEach((_,i)=>{
+    const el=document.getElementById('ps-'+i);
+    el.className='pstep'+(i<n?' done':i===n?' active':'');
+  });
+  document.getElementById('prog-label').textContent=`Step ${n+1} of ${STEPS.length} — ${STEPS[n].label}`;
+  document.getElementById('btn-back').style.display=n>0?'flex':'none';
+  document.getElementById('btn-next').style.display=n<STEPS.length-1?'flex':'none';
+  document.getElementById('btn-save').style.display=n===STEPS.length-1?'flex':'none';
+  if(n===STEPS.length-1) buildSummary();
+  const stepEl=document.getElementById('step-'+n);
+  if(stepEl) stepEl.scrollTop=0;
+  curStep=n;
+}
+
+function goNext(){
+  if(curStep===0&&!v('f_name')&&!v('f_company')){toast('⚠ Please enter name or company');return;}
+  if(curStep<STEPS.length-1) showStep(curStep+1);
+}
+function goBack(){if(curStep>0) showStep(curStep-1);}
+
+// ══════════════════════════════════════
+// BUSINESS CARD
+// ══════════════════════════════════════
+function renderSlots(){
+  ['front','back'].forEach(side=>{
+    const slot=document.getElementById('slot-'+side);
+    const img=bcards[side];
+    if(img){
+      slot.innerHTML=`<img src="${img}" alt="${side}"><div class="sl-side">${side==='front'?'Front':'Back'}</div><button class="sl-del" onclick="event.stopPropagation();removeCard('${side}')">✕</button>`;
+      slot.classList.add('has-img');
+      slot.onclick=()=>openLB(img);
+    } else {
+      slot.innerHTML=`<div class="sl-icon">📷</div><div class="sl-txt">${side==='front'?'Front side':'Back side'}<br><${side==='front'?`b style="color:var(--red)"`:` span style="color:var(--muted)"`}>${side==='front'?'Tap to add':'Optional'}</${side==='front'?'b':'span'}></div>`;
+      slot.classList.remove('has-img');
+      slot.onclick=()=>openCam(side);
+    }
+  });
+}
+
+function removeCard(side){bcards[side]=null;renderSlots();toast('Removed '+side+' side');}
+
+function handleUpload(e){
+  Array.from(e.target.files).slice(0,2).forEach((f,i)=>{
+    const side=i===0?'front':'back';
+    const r=new FileReader();
+    r.onload=ev=>compressImg(ev.target.result,900,540).then(d=>{bcards[side]=d;renderSlots();toast('✅ Image loaded: '+side);});
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+}
+
+function compressImg(src,mw,mh){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>mw){h=Math.round(h*mw/w);w=mw;}
+      if(h>mh){w=Math.round(w*mh/h);h=mh;}
+      const c=document.createElement('canvas');
+      c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg',0.85));
+    };
+    img.src=src;
+  });
+}
+
+function setSide(s){
+  camSide=s;
+  document.getElementById('sb-front').classList.toggle('active',s==='front');
+  document.getElementById('sb-back').classList.toggle('active',s==='back');
+}
+
+async function openCam(side){
+  camSide=side||'front';setSide(camSide);
+  capturedUrl=null;
+  document.getElementById('cam-modal').classList.add('open');
+  document.getElementById('cam-live').style.display='block';
+  document.getElementById('cam-confirm').style.display='none';
+  const wrap=document.getElementById('video-wrap');
+  wrap.innerHTML='<div class="cam-msg">Starting camera…</div>';
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}}});
+    const vid=document.createElement('video');
+    vid.srcObject=camStream;vid.autoplay=true;vid.playsInline=true;
+    wrap.innerHTML='';wrap.appendChild(vid);
+  } catch(err){
+    wrap.innerHTML=`<div class="cam-msg" style="color:#e88">Camera unavailable.<br><small>${err.message}</small><br>Use 🖼 Gallery instead.</div>`;
+  }
+}
+
+function shootPhoto(){
+  const vid=document.querySelector('#video-wrap video');
+  if(!vid)return;
+  const c=document.createElement('canvas');
+  c.width=vid.videoWidth||640;c.height=vid.videoHeight||480;
+  c.getContext('2d').drawImage(vid,0,0);
+  capturedUrl=c.toDataURL('image/jpeg',0.9);
+  document.getElementById('video-wrap').innerHTML=`<img src="${capturedUrl}" style="width:100%;height:100%;object-fit:cover">`;
+  document.getElementById('cam-live').style.display='none';
+  document.getElementById('cam-confirm').style.display='block';
+}
+
+function retake(){
+  capturedUrl=null;
+  document.getElementById('cam-confirm').style.display='none';
+  document.getElementById('cam-live').style.display='block';
+  openCam(camSide);
+}
+
+async function confirmPhoto(){
+  if(!capturedUrl)return;
+  bcards[camSide]=await compressImg(capturedUrl,900,540);
+  renderSlots();closeCam();
+  toast('✅ Card saved: '+camSide+' side');
+}
+
+function closeCam(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  document.getElementById('cam-modal').classList.remove('open');
+  document.getElementById('video-wrap').innerHTML='';
+  document.getElementById('cam-confirm').style.display='none';
+  document.getElementById('cam-live').style.display='block';
+}
+
+function openLB(src){document.getElementById('lb-img').src=src;document.getElementById('lightbox').classList.add('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
+// ══════════════════════════════════════
+// FORM DATA
+// ══════════════════════════════════════
+const v=id=>(document.getElementById(id)||{}).value||'';
+const getRadio=id=>{const g=document.getElementById(id);if(!g)return'';const s=g.querySelector('.chip.sel');return s?s.dataset.val:'';};
+const getMulti=id=>{const g=document.getElementById(id);if(!g)return'';return[...g.querySelectorAll('.chip.sel-multi')].map(c=>c.dataset.val).join(', ');};
+
+function getFormData(){
+  const machines=[];
+  MACHINES.forEach(m=>{
+    const card=document.getElementById('mc-'+m.id);
+    if(card&&card.classList.contains('ticked')){
+      const ab=document.querySelector(`#mir-${m.id} .int-chip.sel`);
+      const machineName=m.isOther?(document.getElementById('other-machine-name')||{}).value||'Other':m.name;
+      machines.push({name:machineName,interest:ab?ab.dataset.level:'',qty:v('qty-'+m.id)});
+    }
+  });
+  let ind=getRadio('g_industry');
+  if(ind==='Other'&&v('f_ind_other'))ind='Other: '+v('f_ind_other');
+  return{
+    date:new Date().toLocaleDateString('en-GB'),ref:'',staff:'',
+    name:v('f_name'),company:v('f_company'),role:v('f_role'),dept:'',
+    email:v('f_email'),phone:v('f_phone'),country:v('f_country'),website:'',
+    industry:ind,company_size:'',timeline:getRadio('g_timeline'),
+    machines,
+    capacity:v('f_capacity'),container:v('f_container'),
+    automation:getRadio('g_auto'),certification:getMulti('g_cert'),special_req:v('f_special'),
+    budget:v('f_budget')?'฿'+v('f_budget'):'',
+    decision_role:getRadio('g_decision'),followup:getMulti('g_followup'),
+    notes:v('f_notes'),
+    bcard_front:bcards.front,bcard_back:bcards.back,
+    saved_at:new Date().toISOString()
+  };
+}
+
+function loadFormData(d){
+  const s=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
+  const sr=(gid,val)=>{const g=document.getElementById(gid);if(!g)return;g.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel',c.dataset.val===val));};
+  const sm=(gid,csv)=>{const g=document.getElementById(gid);if(!g||!csv)return;const vs=csv.split(', ');g.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel-multi',vs.includes(c.dataset.val)));};
+  s('f_name',d.name);s('f_company',d.company);s('f_role',d.role);
+  s('f_email',d.email);s('f_phone',d.phone);s('f_country',d.country);
+  let ind=d.industry||'';
+  if(ind.startsWith('Other: ')){sr('g_industry','Other');s('f_ind_other',ind.replace('Other: ',''));document.getElementById('f_ind_other').style.display='block';}
+  else sr('g_industry',ind);
+  sr('g_timeline',d.timeline);
+  sr('g_auto',d.automation);sm('g_cert',d.certification);
+  sr('g_decision',d.decision_role);sm('g_followup',d.followup);
+  s('f_capacity',d.capacity);s('f_container',d.container);
+  s('f_special',d.special_req);s('f_notes',d.notes);
+  s('f_budget',(d.budget||'').replace('฿','').replace(/,/g,''));
+  MACHINES.forEach(m=>{
+    const card=document.getElementById('mc-'+m.id);
+    if(!card)return;
+    card.classList.remove('ticked');
+    document.querySelectorAll(`#mir-${m.id} .int-chip`).forEach(c=>c.classList.remove('sel'));
+    document.getElementById('qty-'+m.id).value='';
+  });
+  (d.machines||[]).forEach(m=>{
+    const match=MACHINES.find(x=>!x.isOther&&x.name===m.name);
+    if(match){
+      document.getElementById('mc-'+match.id).classList.add('ticked');
+      document.getElementById('qty-'+match.id).value=m.qty||'';
+      document.querySelectorAll(`#mir-${match.id} .int-chip`).forEach(c=>{if(c.dataset.level===m.interest)c.classList.add('sel');});
+    } else {
+      // Other machine
+      const otherCard=document.getElementById('mc-other');
+      if(otherCard){
+        otherCard.classList.add('ticked');
+        const otherInput=document.getElementById('other-machine-name');
+        if(otherInput)otherInput.value=m.name;
+        document.getElementById('qty-other').value=m.qty||'';
+        document.querySelectorAll('#mir-other .int-chip').forEach(c=>{if(c.dataset.level===m.interest)c.classList.add('sel');});
+      }
+    }
+  });
+  bcards={front:d.bcard_front||null,back:d.bcard_back||null};
+  renderSlots();
+}
+
+// ══════════════════════════════════════
+// SUMMARY
+// ══════════════════════════════════════
+function buildSummary(){
+  const d=getFormData();
+  const row=(l,val)=>val?`<div class="summary-row"><span class="sl">${l}</span><span class="sv">${val}</span></div>`:'';
+  const mList=(d.machines||[]).map(m=>`<div class="summary-row"><span class="sl">${m.name}</span><span class="sv">${m.interest||'—'}${m.qty?' · '+m.qty:''}</span></div>`).join('');
+  const bcardHtml=(d.bcard_front||d.bcard_back)
+    ?`<div class="bcard-preview-row">${d.bcard_front?`<img src="${d.bcard_front}" onclick="openLB('${d.bcard_front}')" alt="front">`:''}${d.bcard_back?`<img src="${d.bcard_back}" onclick="openLB('${d.bcard_back}')" alt="back">`:''}</div>`
+    :'<div style="font-size:13px;color:var(--muted)">No business card attached</div>';
+  document.getElementById('summary-content').innerHTML=`
+    <div class="summary-card"><h4>Visitor</h4>${row('Name',d.name)}${row('Company',d.company)}${row('Role',d.role)}${row('Email',d.email)}${row('Phone',d.phone)}${row('Country',d.country)}</div>
+    <div class="summary-card"><h4>Business card</h4>${bcardHtml}</div>
+    <div class="summary-card"><h4>Business</h4>${row('Industry',d.industry)}${row('Timeline',d.timeline)}</div>
+    <div class="summary-card"><h4>Machines (${(d.machines||[]).length} selected)</h4>${mList||'<div style="color:var(--muted);font-size:13px">None selected</div>'}</div>
+    <div class="summary-card"><h4>Technical</h4>${row('Capacity',d.capacity)}${row('Container',d.container)}${row('Automation',d.automation)}${row('Certification',d.certification)}${row('Special req.',d.special_req)}</div>
+    <div class="summary-card"><h4>Budget &amp; decision</h4>${row('Budget',d.budget)}${row('Role',d.decision_role)}${row('Follow-up',d.followup)}</div>
+    ${d.notes?`<div class="summary-card"><h4>Notes</h4><div style="font-size:14px;color:var(--ink);line-height:1.6">${d.notes}</div></div>`:''}
+  `;
+}
+
+// ══════════════════════════════════════
+// GOOGLE SHEETS — ผ่าน Netlify Proxy
+// same-origin = ทำงานได้ทุก browser ทุก device
+// ══════════════════════════════════════
+async function syncToSheets(data){
+  const payload={
+    ref:data.ref||'',date:data.date||'',name:data.name||'',company:data.company||'',
+    role:data.role||'',email:data.email||'',phone:data.phone||'',country:data.country||'',
+    industry:data.industry||'',company_size:data.company_size||'',timeline:data.timeline||'',
+    machines:data.machines||[],capacity:data.capacity||'',container:data.container||'',
+    automation:data.automation||'',certification:data.certification||'',special_req:data.special_req||'',
+    budget:data.budget||'',decision_role:data.decision_role||'',followup:data.followup||'',
+    notes:data.notes||'',
+    bcard_front:data.bcard_front?'[image attached]':null,
+    bcard_back:data.bcard_back?'[image attached]':null,
+  };
+  try{
+    const res=await fetch(API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+    });
+    const json=await res.json();
+    return json&&json.status==='ok';
+  }catch(e){
+    console.warn('syncToSheets error:',e);
+    return false;
+  }
+}
+
+async function loadFromSheets(){
+  toast('☁️ กำลังโหลดจาก Google Sheets…');
+  try{
+    const res=await fetch(API+'?action=getRecords',{
+      method:'GET',
+      headers:{'Accept':'application/json'},
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const result=await res.json();
+    if(!result||result.status!=='ok') throw new Error(result&&result.message||'error');
+    const incoming=result.records||[];
+    if(!incoming.length){toast('📋 ยังไม่มีข้อมูลใน Google Sheets');return;}
+    const local=getRecs();
+    const localMap={};
+    local.forEach(r=>{if(r.ref)localMap[r.ref]=r;});
+    const merged=incoming.map(r=>({
+      ...r,
+      bcard_front:localMap[r.ref]&&localMap[r.ref].bcard_front?localMap[r.ref].bcard_front:null,
+      bcard_back: localMap[r.ref]&&localMap[r.ref].bcard_back ?localMap[r.ref].bcard_back :null,
+    }));
+    saveRecs(merged);renderRecords();
+    toast('✅ โหลดสำเร็จ '+merged.length+' records จาก Google Sheets!');
+  }catch(e){
+    console.warn('loadFromSheets error:',e);
+    toast('⚠ โหลดไม่สำเร็จ — ตรวจสอบ internet แล้วลองใหม่');
+  }
+}
+
+
+// ══════════════════════════════════════
+// LOCAL STORAGE
+// ══════════════════════════════════════
+function getRecs(){try{return JSON.parse(localStorage.getItem('mq_records')||'[]');}catch{return[];}}
+function saveRecs(arr){localStorage.setItem('mq_records',JSON.stringify(arr));updateCount();}
+function updateCount(){
+  const recs=getRecs();
+  const n=recs.length;
+  const pending=recs.filter(r=>!r.synced).length;
+  const badge=document.getElementById('rec-badge');
+  badge.textContent=`📋 ${n} saved${pending>0?' ('+pending+' pending)':''}`;
+  badge.style.background=pending>0?'var(--gold)':'var(--red)';
+}
+
+async function saveRecord(){
+  const d=getFormData();
+  if(!d.name&&!d.company){toast('⚠ กรุณาระบุชื่อหรือบริษัท');showStep(0);return;}
+  const recs=getRecs();
+  d.id=Date.now();
+  d.ref='EXH-'+String(recs.length+1).padStart(4,'0');
+  d.synced=false;
+  recs.push(d);saveRecs(recs);
+  toast('💾 บันทึกแล้ว '+d.ref+' — กำลังส่งไป Google Sheets…');
+  const ok=await syncToSheets(d);
+  if(ok){
+    saveRecs(getRecs().map(r=>r.id===d.id?{...r,synced:true}:r));
+    toast('✅ '+d.ref+' — ส่งไป Google Sheets แล้ว! 🎉');
+  } else {
+    toast('⚠ บันทึกในเครื่องแล้ว — ยังส่ง Sheets ไม่ได้');
+  }
+  setTimeout(()=>{
+    if(confirm('บันทึกเรียบร้อย! เริ่มกรอกข้อมูลผู้เข้าชมคนถัดไปเลยไหมครับ?')){
+      clearForm();showStep(0);
+    }
+  },800);
+}
+
+function clearForm(){
+  ['f_name','f_company','f_role','f_email','f_phone','f_country',
+   'f_capacity','f_container','f_special','f_notes','f_ind_other',
+   'f_budget','other-machine-name'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.chip.sel,.chip.sel-multi').forEach(c=>c.classList.remove('sel','sel-multi'));
+  MACHINES.forEach(m=>{
+    const card=document.getElementById('mc-'+m.id);
+    if(card)card.classList.remove('ticked');
+    document.querySelectorAll(`#mir-${m.id} .int-chip`).forEach(c=>c.classList.remove('sel'));
+    const qty=document.getElementById('qty-'+m.id);
+    if(qty)qty.value='';
+  });
+  document.getElementById('f_ind_other').style.display='none';
+  bcards={front:null,back:null};renderSlots();
+}
+
+function formatBudget(el){
+  const raw=el.value.replace(/[^0-9]/g,'');
+  el.value=raw?Number(raw).toLocaleString():'';
+}
+
+// ══════════════════════════════════════
+// RECORDS VIEW
+// ══════════════════════════════════════
+function openRecords(){document.getElementById('records-view').classList.add('open');renderRecords();}
+function closeRecords(){document.getElementById('records-view').classList.remove('open');}
+
+function renderRecords(){
+  const q=(document.getElementById('rec-search').value||'').toLowerCase();
+  const recs=getRecs().filter(r=>!q||(r.name||'').toLowerCase().includes(q)||(r.company||'').toLowerCase().includes(q));
+  const list=document.getElementById('rec-list');
+  if(!recs.length){
+    list.innerHTML=`<div class="rec-empty"><div class="rec-empty-icon">📋</div>${q?'No results':'No records yet'}<br><span style="font-size:13px">กรอกฟอร์มแล้วกด Save หรือกด ☁️ Load Sheets</span></div>`;
+    return;
+  }
+  list.innerHTML=[...recs].reverse().map(r=>{
+    const tags=(r.machines||[]).map(m=>`<span class="rec-tag">${m.name}</span>`).join('');
+    const syncBadge=r.synced
+      ?`<span class="sync-badge sync-ok">✅ Synced</span>`
+      :`<span class="sync-badge sync-pending">⏳ Pending</span>`;
+    const thumb=r.bcard_front
+      ?`<img class="rec-thumb" src="${r.bcard_front}" onclick="openLB('${r.bcard_front}')">`
+      :`<div class="rec-no-card">No card</div>`;
+    return`<div class="rec-card">
+      <div class="rec-card-top">
+        <div><div class="rc-name">${r.name||'—'}</div><div class="rc-company">${r.company||''} ${syncBadge}</div></div>
+        <div class="rc-ref">${r.ref||''}<br>${r.date||''}</div>
+      </div>
+      <div class="rec-card-mid">
+        <div class="rec-info">
+          ${r.email?'📧 '+r.email+'<br>':''}${r.phone?'📞 '+r.phone+'<br>':''}
+          ${r.timeline?'⏱ '+r.timeline+'<br>':''}${r.budget?'💰 '+r.budget:''}
+          <div class="rec-tags">${tags}</div>
+        </div>
+        <div class="rec-cards-col">${thumb}${r.bcard_back?`<img class="rec-thumb" src="${r.bcard_back}" onclick="openLB('${r.bcard_back}')">`:''}</div>
+      </div>
+      <div class="rec-actions">
+        <button class="rec-act-btn rec-act-load" onclick="loadRec(${r.id})">📂 Load</button>
+        <button class="rec-act-btn rec-act-dl" onclick="dlCards(${r.id})">⬇ Card</button>
+        <button class="rec-act-btn rec-act-del" onclick="delRec(${r.id})">🗑 Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadRec(id){
+  const r=getRecs().find(x=>x.id===id);
+  if(!r)return;
+  loadFormData(r);closeRecords();showStep(0);
+  toast('📂 Loaded: '+(r.name||r.company));
+}
+function delRec(id){
+  if(!confirm('Delete this record?'))return;
+  saveRecs(getRecs().filter(r=>r.id!==id));renderRecords();toast('🗑 Deleted');
+}
+function clearAllRecs(){
+  if(!confirm('Delete ALL records? Cannot be undone.'))return;
+  localStorage.removeItem('mq_records');updateCount();renderRecords();toast('🗑 All cleared');
+}
+function dlCards(id){
+  const r=getRecs().find(x=>x.id===id);if(!r)return;
+  const nm=(r.name||r.ref||'card').replace(/[^a-z0-9]/gi,'_');
+  let n=0;
+  ['front','back'].forEach(side=>{
+    const d=side==='front'?r.bcard_front:r.bcard_back;
+    if(!d)return;
+    const a=document.createElement('a');a.href=d;a.download=`bcard_${nm}_${side}.jpg`;a.click();n++;
+  });
+  if(!n)toast('No card images for this record');
+  else toast(`⬇ Downloaded ${n} image${n>1?'s':''}`);
+}
+
+// ══════════════════════════════════════
+// EXCEL EXPORT
+// ══════════════════════════════════════
+function exportExcel(){
+  const recs=getRecs();
+  if(!recs.length){toast('⚠ No records yet');return;}
+  const h=['Ref','Date','Name','Company','Role','Email','Phone','Country',
+           'Industry','Timeline','Machines','Machine Detail','Capacity','Container',
+           'Automation','Certification','Special Req','Budget','Decision Role',
+           'Follow-up','Biz Card','Notes'];
+  const rows=recs.map(r=>{
+    const mn=(r.machines||[]).map(m=>m.name).join('; ');
+    const md=(r.machines||[]).map(m=>`${m.name}[${m.interest||'-'}]qty:${m.qty||'-'}`).join('; ');
+    return[r.ref||'',r.date||'',r.name||'',r.company||'',r.role||'',
+           r.email||'',r.phone||'',r.country||'',r.industry||'',r.timeline||'',
+           mn,md,r.capacity||'',r.container||'',r.automation||'',r.certification||'',
+           r.special_req||'',r.budget||'',r.decision_role||'',r.followup||'',
+           r.bcard_front?'Yes':'—',r.notes||''];
+  });
+  const mc={};
+  recs.forEach(r=>(r.machines||[]).forEach(m=>{
+    if(!mc[m.name])mc[m.name]={t:0,h:0,med:0,l:0};
+    mc[m.name].t++;
+    const lv=(m.interest||'').toLowerCase();
+    if(lv==='high')mc[m.name].h++;
+    else if(lv==='medium')mc[m.name].med++;
+    else if(lv==='low')mc[m.name].l++;
+  }));
+  const sr=[['Machine','Total','High','Medium','Low','% High'],
+    ...Object.entries(mc).sort((a,b)=>b[1].t-a[1].t)
+      .map(([n,c])=>[n,c.t,c.h,c.med,c.l,c.t?Math.round(c.h/c.t*100)+'%':'0%'])];
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet([h,...rows]);
+  ws1['!cols']=[8,10,18,20,16,22,14,14,18,16,30,50,18,16,14,16,30,14,20,20,8,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws1,'Records');
+  const ws2=XLSX.utils.aoa_to_sheet(sr);
+  ws2['!cols']=[32,8,8,8,8,8].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Machine Summary');
+  XLSX.writeFile(wb,`PROPAK2026_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`📊 Exported ${recs.length} records`);
+}
+
+// ══════════════════════════════════════
+// TOAST + INIT
+// ══════════════════════════════════════
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+init();
+renderSlots();
+</script>
+</body>
+</html>
