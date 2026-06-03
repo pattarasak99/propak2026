@@ -6,6 +6,7 @@
 <title>PROPAK 2026 — Exhibition Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#0d0f1a;--surface:#141623;--surface2:#1c1f35;--surface3:#232640;
@@ -146,6 +147,7 @@ h1 span{color:var(--accent)}
     </div>
     <div class="header-right">
       <button class="btn btn-ghost" onclick="loadData()">🔄 Refresh</button>
+      <button class="btn btn-ghost" onclick="exportExcel()" id="btn-export" style="background:#1a7a45;color:white;border-color:#1a7a45">📊 Export Excel</button>
       <a href="/" class="btn btn-ghost">📋 Form</a>
     </div>
   </div>
@@ -445,6 +447,95 @@ function render() {
 loadData();
 // Auto-refresh every 2 minutes
 setInterval(loadData, 120000);
+
+// ── EXPORT EXCEL ──
+function exportExcel(){
+  if(!allRecords.length){alert('No data to export. Please load data first.');return;}
+
+  // Sheet 1: All Records
+  const h1=['Ref','Date','Name','Company','Role','Email','Phone','Country',
+    'Industry','Timeline','Machines Selected','Machine Detail',
+    'Capacity','Container','Automation','Certification','Special Req',
+    'Budget','Decision Role','Follow-up','Notes'];
+  const rows1=allRecords.map(r=>{
+    const mn=(r.machines||[]).map(m=>m.name).join('; ');
+    const md=(r.machines||[]).map(m=>`${m.name}[${m.interest||'-'}]qty:${m.qty||'-'}`).join('; ');
+    return[r.ref||'',r.date||'',r.name||'',r.company||'',r.role||'',
+      r.email||'',r.phone||'',r.country||'',r.industry||'',r.timeline||'',
+      mn,md,r.capacity||'',r.container||'',r.automation||'',
+      r.certification||'',r.special_req||'',r.budget||'',
+      r.decision_role||'',r.followup||'',r.notes||''];
+  });
+
+  // Sheet 2: Machine Interest Detail
+  const h2=['Ref','Name','Company','Machine','Interest Level','Quantity'];
+  const rows2=[];
+  allRecords.forEach(r=>{
+    (r.machines||[]).forEach(m=>{
+      rows2.push([r.ref||'',r.name||'',r.company||'',m.name,m.interest||'',m.qty||'']);
+    });
+  });
+
+  // Sheet 3: Machine Summary
+  const machineMap={};
+  allRecords.forEach(r=>{
+    (r.machines||[]).forEach(m=>{
+      if(!machineMap[m.name])machineMap[m.name]={total:0,high:0,medium:0,low:0};
+      machineMap[m.name].total++;
+      const lv=(m.interest||'').toLowerCase();
+      if(lv==='high')machineMap[m.name].high++;
+      else if(lv==='medium')machineMap[m.name].medium++;
+      else if(lv==='low')machineMap[m.name].low++;
+    });
+  });
+  const h3=['Machine','Total Interest','High','Medium','Low','% High'];
+  const rows3=Object.entries(machineMap)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([name,c])=>[name,c.total,c.high,c.medium,c.low,
+      c.total?Math.round(c.high/c.total*100)+'%':'0%']);
+
+  // Sheet 4: Timeline Summary
+  const tlMap={};
+  allRecords.forEach(r=>{const tl=r.timeline||'Not specified';tlMap[tl]=(tlMap[tl]||0)+1;});
+  const h4=['Timeline','Count','% of Total'];
+  const rows4=Object.entries(tlMap).sort((a,b)=>b[1]-a[1])
+    .map(([tl,n])=>[tl,n,Math.round(n/allRecords.length*100)+'%']);
+
+  // Sheet 5: Industry Summary
+  const indMap={};
+  allRecords.forEach(r=>{const ind=(r.industry||'Not specified').replace(/^Other: /,'Other');indMap[ind]=(indMap[ind]||0)+1;});
+  const h5=['Industry','Count','% of Total'];
+  const rows5=Object.entries(indMap).sort((a,b)=>b[1]-a[1])
+    .map(([ind,n])=>[ind,n,Math.round(n/allRecords.length*100)+'%']);
+
+  // Build workbook
+  const wb=XLSX.utils.book_new();
+
+  const addSheet=(name,header,rows,colWidths)=>{
+    const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+    ws['!cols']=colWidths.map(w=>({wch:w}));
+    // Style header row
+    for(let c=0;c<header.length;c++){
+      const addr=XLSX.utils.encode_cell({r:0,c});
+      if(!ws[addr])continue;
+      ws[addr].s={
+        font:{bold:true,color:{rgb:'FFFFFF'},sz:10},
+        fill:{fgColor:{rgb:'1A1A2E'},patternType:'solid'},
+        alignment:{horizontal:'center',wrapText:true}
+      };
+    }
+    XLSX.utils.book_append_sheet(wb,ws,name);
+  };
+
+  addSheet('All Records',h1,rows1,[8,12,18,20,16,22,14,14,18,18,30,50,16,14,14,16,25,14,20,20,25]);
+  addSheet('Machine Interest',h2,rows2,[8,18,20,28,14,10]);
+  addSheet('Machine Summary',h3,rows3,[30,12,8,10,8,10]);
+  addSheet('Timeline Summary',h4,rows4,[28,10,12]);
+  addSheet('Industry Summary',h5,rows5,[28,10,12]);
+
+  const date=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,`PROPAK2026_Dashboard_${date}.xlsx`);
+}
 </script>
 </body>
 </html>
