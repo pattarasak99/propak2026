@@ -23,13 +23,10 @@ module.exports = async function(req, res) {
       if (qs) url += '?' + qs;
     }
     const data = await request(req.method, url, body, 0);
-    try {
-      return res.status(200).json(JSON.parse(data));
-    } catch(e) {
-      return res.status(200).send(data);
-    }
+    try { return res.status(200).json(JSON.parse(data)); }
+    catch(e) { return res.status(200).send(data); }
   } catch(err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    return res.status(500).json({ status:'error', message: err.message });
   }
 };
 
@@ -55,7 +52,7 @@ function request(method, url, body, depth) {
       headers:  {
         'Content-Type': 'application/json',
         'User-Agent':   'Vercel-Function/1.0',
-        'Accept':       'application/json, text/plain, */*',
+        'Accept':       'application/json, */*',
       },
     };
     if (body && method === 'POST') opts.headers['Content-Length'] = Buffer.byteLength(body);
