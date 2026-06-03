@@ -11,37 +11,23 @@ const CORS = {
 };
 
 module.exports = async function(req, res) {
-  // Set CORS headers
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k, v));
-
-  // Preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+  if (req.method === 'OPTIONS') return res.status(200).end();
   try {
     let url  = GS_URL;
     let body = null;
-
     if (req.method === 'POST') {
-      // Read body
       body = await readBody(req);
     } else {
-      // Forward query string
       const qs = new URLSearchParams(req.query || {}).toString();
       if (qs) url += '?' + qs;
     }
-
     const data = await request(req.method, url, body, 0);
-
-    // Try parse JSON
     try {
-      const json = JSON.parse(data);
-      return res.status(200).json(json);
+      return res.status(200).json(JSON.parse(data));
     } catch(e) {
       return res.status(200).send(data);
     }
-
   } catch(err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
@@ -60,7 +46,6 @@ function request(method, url, body, depth) {
   if (depth > 5) return Promise.reject(new Error('Too many redirects'));
   const lib    = url.startsWith('https') ? https : http;
   const parsed = new URL(url);
-
   return new Promise((resolve, reject) => {
     const opts = {
       hostname: parsed.hostname,
@@ -73,10 +58,7 @@ function request(method, url, body, depth) {
         'Accept':       'application/json, text/plain, */*',
       },
     };
-    if (body && method === 'POST') {
-      opts.headers['Content-Length'] = Buffer.byteLength(body);
-    }
-
+    if (body && method === 'POST') opts.headers['Content-Length'] = Buffer.byteLength(body);
     const req = lib.request(opts, response => {
       if ([301,302,303,307,308].includes(response.statusCode) && response.headers.location) {
         const nextMethod = response.statusCode === 303 ? 'GET' : method;
@@ -91,7 +73,6 @@ function request(method, url, body, depth) {
       response.on('data', chunk => data += chunk);
       response.on('end',  () => resolve(data));
     });
-
     req.on('error', reject);
     if (body && method === 'POST') req.write(body);
     req.end();
