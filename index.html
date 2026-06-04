@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>PROPAK 2026 — Machine Enquiry</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
   --ink:#1a1a2e;--ink2:#4a4a6a;--muted:#8888aa;
@@ -184,7 +185,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <!-- STEP 1: BUSINESS CARD -->
     <div class="step" id="step-1">
-      <div class="step-hd"><h2>🪪 Business card</h2><p>Take a photo or upload an image</p></div>
+      <div class="step-hd"><h2>🪪 Business card</h2><p>ถ่ายรูปหรืออัพโหลด แล้วสแกนกรอกข้อมูลอัตโนมัติ</p></div>
       <div class="bcard-section">
         <div class="bcard-slots">
           <div class="bcard-slot" id="slot-front" onclick="openCam('front')">
@@ -202,8 +203,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <input type="file" id="bc-file" accept="image/*" multiple style="display:none" onchange="handleUpload(event)">
         </div>
       </div>
-      <div style="margin-top:14px;font-size:13px;color:var(--muted);line-height:1.6;padding:12px;background:var(--bg);border-radius:10px">
-        💡 Tip: ถ่ายรูปนามบัตรทันทีหลังรับ สามารถข้ามขั้นตอนนี้ได้ถ้าไม่มี
+
+      <!-- OCR SCAN BUTTON -->
+      <div style="margin-top:12px">
+        <button id="btn-ocr" onclick="scanBusinessCard()"
+          style="width:100%;height:52px;background:linear-gradient(135deg,#1a5fa8,#1a7a45);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity 0.15s">
+          🔍 สแกนนามบัตร → กรอกข้อมูลอัตโนมัติ
+        </button>
+      </div>
+
+      <!-- OCR PROGRESS -->
+      <div id="ocr-progress" style="display:none;margin-top:12px;background:var(--bg);border-radius:12px;padding:14px;border:1.5px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:8px" id="ocr-status">กำลังวิเคราะห์...</div>
+        <div style="background:#e0e4f0;border-radius:6px;height:8px;overflow:hidden">
+          <div id="ocr-bar" style="height:100%;background:linear-gradient(90deg,#1a5fa8,#06d6a0);width:0%;transition:width 0.3s;border-radius:6px"></div>
+        </div>
+      </div>
+
+      <!-- OCR RESULT PREVIEW -->
+      <div id="ocr-result" style="display:none;margin-top:12px;background:var(--bg);border-radius:12px;padding:14px;border:1.5px solid var(--border)">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">✅ พบข้อมูลจากนามบัตร — กรุณาตรวจสอบ</div>
+        <div id="ocr-fields" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="applyOCR()" style="flex:1;height:46px;background:var(--ink);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">✅ ใช้ข้อมูลนี้</button>
+          <button onclick="dismissOCR()" style="flex:1;height:46px;background:var(--bg);color:var(--muted);border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">✕ ยกเลิก</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;font-size:13px;color:var(--muted);line-height:1.6;padding:12px;background:var(--bg);border-radius:10px">
+        💡 <strong>วิธีใช้:</strong> ถ่ายรูปนามบัตรก่อน แล้วกดปุ่ม "สแกนนามบัตร" ระบบจะอ่านข้อมูลและกรอกให้อัตโนมัติ ตรวจสอบความถูกต้องก่อนกด "ใช้ข้อมูลนี้" ครับ
       </div>
     </div>
 
@@ -926,6 +954,122 @@ function exportExcel(){
 }
 
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// TESSERACT OCR — สแกนนามบัตร
+// ══════════════════════════════════════
+let ocrData={};
+
+async function scanBusinessCard(){
+  if(!bcards.front&&!bcards.back){toast('⚠ กรุณาถ่ายรูปนามบัตรก่อนครับ');return;}
+  const imgSrc=bcards.front||bcards.back;
+  const btn=document.getElementById('btn-ocr');
+  const progress=document.getElementById('ocr-progress');
+  const result=document.getElementById('ocr-result');
+  btn.disabled=true;
+  btn.innerHTML='⏳ กำลังสแกน...';
+  progress.style.display='block';
+  result.style.display='none';
+  try{
+    const worker=await Tesseract.createWorker(['eng','tha'],1,{
+      logger:m=>{
+        if(m.status==='recognizing text'){
+          const pct=Math.round(m.progress*100);
+          document.getElementById('ocr-bar').style.width=pct+'%';
+          document.getElementById('ocr-status').textContent=`กำลังอ่านข้อความ... ${pct}%`;
+        } else {
+          document.getElementById('ocr-status').textContent=m.status;
+        }
+      }
+    });
+    const{data:{text}}=await worker.recognize(imgSrc);
+    await worker.terminate();
+    document.getElementById('ocr-status').textContent='✅ วิเคราะห์เสร็จแล้ว';
+    document.getElementById('ocr-bar').style.width='100%';
+    ocrData=parseBusinessCard(text);
+    showOCRResult(ocrData);
+  }catch(err){
+    toast('❌ สแกนไม่สำเร็จ: '+err.message);
+    progress.style.display='none';
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML='🔍 สแกนนามบัตรอีกครั้ง';
+  }
+}
+
+function parseBusinessCard(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+  const result={};
+  // Email
+  const emailMatch=text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  if(emailMatch)result.email=emailMatch[0];
+  // Phone
+  const phoneMatches=text.match(/(\+?[\d\s\-().]{8,16})/g);
+  if(phoneMatches){
+    const phones=phoneMatches.map(p=>p.replace(/\s/g,'')).filter(p=>p.replace(/\D/g,'').length>=8);
+    if(phones.length)result.phone=phones[0];
+  }
+  // Website
+  const webMatch=text.match(/(www\.[^\s]+|https?:\/\/[^\s]+)/i);
+  if(webMatch)result.website=webMatch[0];
+  // Parse name/role/company from lines
+  const candidates=lines.filter(l=>
+    !l.includes('@')&&!l.match(/^\+?[\d\s\-().]{6,}$/)&&
+    !l.match(/www\.|http/i)&&l.length>2&&l.length<60
+  );
+  if(candidates.length>0)result.name=candidates[0];
+  const companyKw=/co\.|ltd|inc|corp|บริษัท|จำกัด|group|international/i;
+  const roleKw=/manager|director|engineer|officer|executive|ceo|president|ผู้จัดการ|ผู้อำนวยการ|วิศวกร/i;
+  for(let i=1;i<candidates.length;i++){
+    const line=candidates[i];
+    if(!result.company&&companyKw.test(line)){result.company=line;}
+    else if(!result.role&&roleKw.test(line)){result.role=line;}
+    else if(!result.role&&i===1){result.role=line;}
+    else if(!result.company&&i===2){result.company=line;}
+  }
+  return result;
+}
+
+function showOCRResult(data){
+  const container=document.getElementById('ocr-fields');
+  const fields=[
+    {key:'name',   label:'ชื่อ-นามสกุล',icon:'👤'},
+    {key:'role',   label:'ตำแหน่ง',     icon:'💼'},
+    {key:'company',label:'บริษัท',       icon:'🏢'},
+    {key:'email',  label:'Email',        icon:'📧'},
+    {key:'phone',  label:'โทรศัพท์',     icon:'📞'},
+    {key:'website',label:'Website',      icon:'🌐'},
+  ];
+  container.innerHTML=fields.filter(f=>data[f.key]).map(f=>`
+    <div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">${f.icon} ${f.label}</div>
+      <input type="text" value="${(data[f.key]||'').replace(/"/g,'&quot;')}" data-field="${f.key}"
+        style="width:100%;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;font-family:inherit"
+        oninput="ocrData['${f.key}']=this.value">
+    </div>`).join('');
+  if(!Object.keys(data).length){
+    container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px">ไม่พบข้อมูลที่อ่านได้ชัดเจน<br>ลองถ่ายรูปใหม่ในที่แสงสว่างขึ้นครับ</div>';
+  }
+  document.getElementById('ocr-result').style.display='block';
+}
+
+function applyOCR(){
+  const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
+  set('f_name',   ocrData.name);
+  set('f_role',   ocrData.role);
+  set('f_company',ocrData.company);
+  set('f_email',  ocrData.email);
+  set('f_phone',  ocrData.phone);
+  dismissOCR();
+  toast('✅ กรอกข้อมูลจากนามบัตรแล้ว — กรุณาตรวจสอบอีกครั้งครับ');
+  setTimeout(()=>showStep(0),800);
+}
+
+function dismissOCR(){
+  document.getElementById('ocr-result').style.display='none';
+  document.getElementById('ocr-progress').style.display='none';
+  ocrData={};
+}
+
 // TOAST + INIT
 // ══════════════════════════════════════
 function toast(msg){
