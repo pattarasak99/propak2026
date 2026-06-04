@@ -20,8 +20,18 @@ module.exports = async function(req, res) {
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
     const clientEmail = process.env.DRIVE_CLIENT_EMAIL;
-    const privateKey  = (process.env.DRIVE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
     const folderId    = '0AJF7btp7WqGTUk9PVA';
+
+    // Handle private key — รองรับทั้ง \n literal และ newline จริง
+    let privateKey = process.env.DRIVE_PRIVATE_KEY || '';
+    // ถ้ายังเป็น \n literal ให้แปลงเป็น newline จริง
+    if (privateKey.indexOf('\\n') !== -1) {
+      privateKey = privateKey.replace(/\\n/g, '\n');
+    }
+    // ถ้า key ไม่มี header ให้เพิ่มเข้าไป
+    if (!privateKey.includes('-----BEGIN')) {
+      return res.status(500).json({ error: 'Invalid private key format' });
+    }
 
     if (!clientEmail || !privateKey) {
       return res.status(500).json({ error: 'Drive credentials not configured' });
@@ -34,7 +44,7 @@ module.exports = async function(req, res) {
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+      body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
     });
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
@@ -42,7 +52,7 @@ module.exports = async function(req, res) {
     }
     const accessToken = tokenData.access_token;
 
-    // 3. แปลง base64 ด้วย Buffer (Node.js — ไม่ใช้ atob)
+    // 3. แปลง base64 ด้วย Buffer
     const base64    = image.replace(/^data:image\/\w+;base64,/, '');
     const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
     const mimeType  = mimeMatch ? mimeMatch[1] : 'image/jpeg';
@@ -103,7 +113,6 @@ module.exports = async function(req, res) {
   }
 };
 
-// JWT helper ใช้ Node.js crypto (ไม่ต้องใช้ browser API)
 async function makeJWT(clientEmail, privateKey) {
   const now     = Math.floor(Date.now() / 1000);
   const header  = toBase64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
