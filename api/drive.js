@@ -20,27 +20,23 @@ module.exports = async function(req, res) {
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
     const clientEmail = process.env.DRIVE_CLIENT_EMAIL;
-    const folderId    = '1n0olOzv8niL7AxpoC8plZFFqnXmwmJlR';
+    const folderId    = '10CVS7EMEQcJBnTOT4k-BlnS39E8V8NVP';
 
-    // Handle private key — รองรับทั้ง \n literal และ newline จริง
     let privateKey = process.env.DRIVE_PRIVATE_KEY || '';
-    // ถ้ายังเป็น \n literal ให้แปลงเป็น newline จริง
     if (privateKey.indexOf('\\n') !== -1) {
       privateKey = privateKey.replace(/\\n/g, '\n');
     }
-    // ถ้า key ไม่มี header ให้เพิ่มเข้าไป
     if (!privateKey.includes('-----BEGIN')) {
       return res.status(500).json({ error: 'Invalid private key format' });
     }
-
     if (!clientEmail || !privateKey) {
       return res.status(500).json({ error: 'Drive credentials not configured' });
     }
 
-    // 1. สร้าง JWT
+    // 1. JWT
     const jwt = await makeJWT(clientEmail, privateKey);
 
-    // 2. แลก JWT เป็น Access Token
+    // 2. Access Token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -52,15 +48,15 @@ module.exports = async function(req, res) {
     }
     const accessToken = tokenData.access_token;
 
-    // 3. แปลง base64 ด้วย Buffer
+    // 3. base64 → Buffer
     const base64    = image.replace(/^data:image\/\w+;base64,/, '');
     const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
     const mimeType  = mimeMatch ? mimeMatch[1] : 'image/jpeg';
     const imgBuf    = Buffer.from(base64, 'base64');
 
-    // 4. Upload multipart
+    // 4. Upload multipart — supportsAllDrives=true สำหรับ My Drive
     const fname    = filename || ('bcard_' + Date.now() + '.jpg');
-    const metadata = JSON.stringify({ name: fname });
+    const metadata = JSON.stringify({ name: fname, parents: [folderId] });
     const boundary = 'boundary_propak2026';
 
     const part1 = Buffer.from(
@@ -76,7 +72,7 @@ module.exports = async function(req, res) {
     const multipart = Buffer.concat([part1, part2, imgBuf, part3]);
 
     const uploadRes = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true',
       {
         method: 'POST',
         headers: {
@@ -93,7 +89,7 @@ module.exports = async function(req, res) {
     }
 
     // 5. ทำให้ public
-    await fetch('https://www.googleapis.com/drive/v3/files/' + uploadData.id + '/permissions', {
+    await fetch('https://www.googleapis.com/drive/v3/files/' + uploadData.id + '/permissions?supportsAllDrives=true', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + accessToken,
