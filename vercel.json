@@ -1,12 +1,18 @@
 {
+  "functions": {
+    "api/vision.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
-    { "source": "/api/sheets", "destination": "/api/sheets" }
+    { "source": "/api/sheets", "destination": "/api/sheets" },
+    { "source": "/api/vision", "destination": "/api/vision" }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
