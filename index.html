@@ -577,8 +577,8 @@ async function syncToSheets(data){
     automation:data.automation||'',certification:data.certification||'',special_req:data.special_req||'',
     budget:data.budget||'',decision_role:data.decision_role||'',followup:data.followup||'',
     notes:data.notes||'',
-    bcard_front:data.bcard_front?'[image attached]':null,
-    bcard_back:data.bcard_back?'[image attached]':null,
+    bcard_front:data.bcard_front_url||( data.bcard_front?'[image attached]':null),
+    bcard_back:data.bcard_back_url||(data.bcard_back?'[image attached]':null),
   };
   try{
     const res=await fetch(API,{
@@ -636,6 +636,23 @@ function updateCount(){
   badge.style.background=pending>0?'var(--gold)':'var(--red)';
 }
 
+async function uploadToDrive(base64Image, filename) {
+  try {
+    const res = await fetch('/api/drive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64Image, filename }),
+    });
+    const data = await res.json();
+    if (data.status === 'ok') return data.directLink;
+    console.warn('Drive upload failed:', data);
+    return null;
+  } catch(e) {
+    console.warn('Drive upload error:', e);
+    return null;
+  }
+}
+
 async function saveRecord(){
   const d=getFormData();
   if(!d.name&&!d.company){toast('⚠ กรุณาระบุชื่อหรือบริษัท');showStep(0);return;}
@@ -644,7 +661,22 @@ async function saveRecord(){
   d.ref='EXH-'+String(recs.length+1).padStart(4,'0');
   d.synced=false;
   recs.push(d);saveRecs(recs);
-  toast('💾 บันทึกแล้ว '+d.ref+' — กำลังส่งไป Google Sheets…');
+  toast('💾 บันทึกแล้ว '+d.ref+' — กำลังอัพโหลดรูปและส่งไป Google Sheets…');
+
+  // Upload รูปไป Google Drive
+  const safeName=(d.name||d.ref||'bcard').replace(/[^a-z0-9]/gi,'_');
+  if(d.bcard_front){
+    const link=await uploadToDrive(d.bcard_front, `${d.ref}_${safeName}_front.jpg`);
+    if(link) d.bcard_front_url=link;
+  }
+  if(d.bcard_back){
+    const link=await uploadToDrive(d.bcard_back, `${d.ref}_${safeName}_back.jpg`);
+    if(link) d.bcard_back_url=link;
+  }
+
+  // อัพเดท record ใน localStorage พร้อม Drive URL
+  saveRecs(getRecs().map(r=>r.id===d.id?{...r,bcard_front_url:d.bcard_front_url,bcard_back_url:d.bcard_back_url}:r));
+
   const ok=await syncToSheets(d);
   if(ok){
     saveRecs(getRecs().map(r=>r.id===d.id?{...r,synced:true}:r));
