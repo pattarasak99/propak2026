@@ -60,7 +60,7 @@ module.exports = async function(req, res) {
 
     // 4. Upload multipart
     const fname    = filename || ('bcard_' + Date.now() + '.jpg');
-    const metadata = JSON.stringify({ name: fname, parents: [folderId] });
+    const metadata = JSON.stringify({ name: fname });
     const boundary = 'boundary_propak2026';
 
     const part1 = Buffer.from(
