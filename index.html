@@ -638,13 +638,13 @@ function updateCount(){
 
 async function uploadToDrive(base64Image, filename) {
   try {
-    const res = await fetch('/api/drive', {
+    const res = await fetch('/api/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: base64Image, filename }),
     });
     const data = await res.json();
-    if (data.status === 'ok') return data.directLink;
+    if (data.status === 'ok') return data.url;
     console.warn('Drive upload failed:', data);
     return null;
   } catch(e) {
