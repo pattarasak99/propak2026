@@ -1015,7 +1015,9 @@ async function handleQuickScan(e){
       r.onload=ev=>res(ev.target.result);
       r.readAsDataURL(file);
     });
-    const compressed=await compressImg(dataUrl,1200,800);
+    const compressed=await compressImg(dataUrl,800,600);
+    // บีบอัดพิเศษสำหรับ Vision API — ลดขนาดให้ไม่เกิน 1MB
+    const visionImg=await compressImg(dataUrl,640,480);
     bcards.front=compressed;
     renderSlots();
 
@@ -1025,7 +1027,7 @@ async function handleQuickScan(e){
     const res=await fetch('/api/vision',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({image:compressed})
+      body:JSON.stringify({image:visionImg})
     });
 
     document.getElementById('qs-bar').style.width='80%';
