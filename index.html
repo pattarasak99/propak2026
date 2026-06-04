@@ -611,7 +611,8 @@ async function loadFromSheets(){
     local.forEach(r=>{if(r.ref)localMap[r.ref]=r;});
     const merged=incoming.map(r=>({
       ...r,
-      bcard_front:localMap[r.ref]&&localMap[r.ref].bcard_front?localMap[r.ref].bcard_front:null,
+      bcard_front_url:r.bcard_front&&r.bcard_front.startsWith("http")?r.bcard_front:null,
+      bcard_front:localMap[r.ref]&&localMap[r.ref].bcard_front?localMap[r.ref].bcard_front:(r.bcard_front&&r.bcard_front.startsWith("http")?r.bcard_front:null),
       bcard_back: localMap[r.ref]&&localMap[r.ref].bcard_back ?localMap[r.ref].bcard_back :null,
     }));
     saveRecs(merged);renderRecords();
@@ -731,8 +732,9 @@ function renderRecords(){
     const syncBadge=r.synced
       ?`<span class="sync-badge sync-ok">✅ Synced</span>`
       :`<span class="sync-badge sync-pending">⏳ Pending</span>`;
-    const thumb=r.bcard_front
-      ?`<img class="rec-thumb" src="${r.bcard_front}" onclick="openLB('${r.bcard_front}')">`
+    const cardImg=r.bcard_front||r.bcard_front_url;
+    const thumb=cardImg
+      ?`<img class="rec-thumb" src="${cardImg}" onclick="openLB('${cardImg}')">`
       :`<div class="rec-no-card">No card</div>`;
     return`<div class="rec-card">
       <div class="rec-card-top">
