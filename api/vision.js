@@ -1,3 +1,5 @@
+const { createServer } = require('http');
+
 module.exports = async function(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -7,11 +9,22 @@ module.exports = async function(req, res) {
   if (req.method !== 'POST') return res.status(405).json({error:'Method not allowed'});
 
   try {
-    const { image } = req.body;
+    // อ่าน body เอง รองรับขนาดใหญ่
+    const body = await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => data += chunk);
+      req.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch(e) { reject(new Error('Invalid JSON')); }
+      });
+      req.on('error', reject);
+    });
+
+    const { image } = body;
     if (!image) return res.status(400).json({error:'No image provided'});
 
     const apiKey = process.env.VISION_API_KEY;
-    if (!apiKey) return res.status(500).json({error:'No API key configured'});
+    if (!apiKey) return res.status(500).json({error:'No API key'});
 
     const base64 = image.replace(/^data:image\/\w+;base64,/, '');
 
@@ -23,17 +36,13 @@ module.exports = async function(req, res) {
         body: JSON.stringify({
           requests: [{
             image: { content: base64 },
-            features: [
-              {type:'DOCUMENT_TEXT_DETECTION', maxResults:1}
-            ]
+            features: [{type:'DOCUMENT_TEXT_DETECTION'}]
           }]
         })
       }
     );
 
     const data = await response.json();
-
-    // ถ้า Vision API return error
     if (data.error) return res.status(500).json({status:'error', message: data.error.message});
 
     const text = data.responses?.[0]?.fullTextAnnotation?.text || '';
