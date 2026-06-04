@@ -74,21 +74,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .qty-field label{font-size:13px;color:var(--ink2);white-space:nowrap}
 .qty-field input{flex:1;height:42px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);font-family:inherit;font-size:15px;padding:0 12px;outline:none;-webkit-appearance:none}
 .qty-field input:focus{border-color:var(--red)}
-.bcard-section{background:var(--bg);border-radius:var(--radius);padding:16px;border:1.5px solid var(--border)}
-.bcard-slots{display:flex;gap:12px;margin-bottom:14px}
-.bcard-slot{flex:1;aspect-ratio:1.75;border:2px dashed var(--border);border-radius:10px;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;transition:border-color 0.15s;min-height:90px}
-.bcard-slot:active{transform:scale(0.97)}
-.bcard-slot.has-img{border-style:solid;border-color:var(--border)}
-.bcard-slot img{width:100%;height:100%;object-fit:cover}
-.bcard-slot .sl-icon{font-size:28px;opacity:0.35}
-.bcard-slot .sl-txt{font-size:11px;color:var(--muted);margin-top:4px;text-align:center}
-.bcard-slot .sl-del{position:absolute;top:5px;right:5px;width:22px;height:22px;background:rgba(200,16,46,0.85);color:white;border:none;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
-.bcard-slot .sl-side{position:absolute;bottom:0;left:0;right:0;background:rgba(26,26,46,0.6);color:white;font-size:10px;text-align:center;padding:2px 0}
-.bcard-btns{display:flex;gap:8px}
-.bcard-btn{flex:1;height:46px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity 0.15s;border:none}
-.bcard-btn:active{opacity:0.8}
-.bcard-btn-cam{background:var(--ink);color:white}
-.bcard-btn-file{background:white;color:var(--ink);border:1.5px solid var(--border)}
 .modal{display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.9);flex-direction:column;align-items:center;justify-content:flex-end}
 .modal.open{display:flex}
 .modal-box{background:white;border-radius:20px 20px 0 0;width:100%;max-width:540px;padding:16px;max-height:90vh;overflow-y:auto}
@@ -176,7 +161,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="step" id="step-0">
       <div class="step-hd"><h2>👤 Visitor info</h2><p>Basic contact details</p></div>
 
-      <!-- SCAN CARD BUTTON — อยู่บนสุด -->
+      <!-- SCAN CARD BUTTON -->
       <div style="margin-bottom:20px">
         <button onclick="quickScan()"
           style="width:100%;height:56px;background:linear-gradient(135deg,#1a1a2e,#1a5fa8);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(26,95,168,0.3)">
@@ -220,60 +205,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="field"><div class="field-label">Country / City</div><input type="text" id="f_country" placeholder="e.g. Thailand, Vietnam"></div>
     </div>
 
-    <!-- STEP 1: BUSINESS CARD -->
+    <!-- STEP 1: INDUSTRY (เดิม step-2) -->
     <div class="step" id="step-1">
-      <div class="step-hd"><h2>🪪 Business card</h2><p>ถ่ายรูปหรืออัพโหลด แล้วสแกนกรอกข้อมูลอัตโนมัติ</p></div>
-      <div class="bcard-section">
-        <div class="bcard-slots">
-          <div class="bcard-slot" id="slot-front" onclick="openCam('front')">
-            <div class="sl-icon">📷</div>
-            <div class="sl-txt">Front side<br><b style="color:var(--red)">Tap to add</b></div>
-          </div>
-          <div class="bcard-slot" id="slot-back" onclick="openCam('back')">
-            <div class="sl-icon">📷</div>
-            <div class="sl-txt">Back side<br><span style="color:var(--muted)">Optional</span></div>
-          </div>
-        </div>
-        <div class="bcard-btns">
-          <button class="bcard-btn bcard-btn-cam" onclick="openCam('front')">📷 Camera</button>
-          <button class="bcard-btn bcard-btn-file" onclick="document.getElementById('bc-file').click()">🖼 Gallery</button>
-          <input type="file" id="bc-file" accept="image/*" multiple style="display:none" onchange="handleUpload(event)">
-        </div>
-      </div>
-
-      <!-- OCR SCAN BUTTON -->
-      <div style="margin-top:12px">
-        <button id="btn-ocr" onclick="scanBusinessCard()"
-          style="width:100%;height:52px;background:linear-gradient(135deg,#1a5fa8,#1a7a45);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity 0.15s">
-          🔍 สแกนนามบัตร → กรอกข้อมูลอัตโนมัติ
-        </button>
-      </div>
-
-      <!-- OCR PROGRESS -->
-      <div id="ocr-progress" style="display:none;margin-top:12px;background:var(--bg);border-radius:12px;padding:14px;border:1.5px solid var(--border)">
-        <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:8px" id="ocr-status">กำลังวิเคราะห์...</div>
-        <div style="background:#e0e4f0;border-radius:6px;height:8px;overflow:hidden">
-          <div id="ocr-bar" style="height:100%;background:linear-gradient(90deg,#1a5fa8,#06d6a0);width:0%;transition:width 0.3s;border-radius:6px"></div>
-        </div>
-      </div>
-
-      <!-- OCR RESULT PREVIEW -->
-      <div id="ocr-result" style="display:none;margin-top:12px;background:var(--bg);border-radius:12px;padding:14px;border:1.5px solid var(--border)">
-        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px">✅ พบข้อมูลจากนามบัตร — กรุณาตรวจสอบ</div>
-        <div id="ocr-fields" style="display:flex;flex-direction:column;gap:8px"></div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button onclick="applyOCR()" style="flex:1;height:46px;background:var(--ink);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">✅ ใช้ข้อมูลนี้</button>
-          <button onclick="dismissOCR()" style="flex:1;height:46px;background:var(--bg);color:var(--muted);border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">✕ ยกเลิก</button>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;font-size:13px;color:var(--muted);line-height:1.6;padding:12px;background:var(--bg);border-radius:10px">
-        💡 <strong>วิธีใช้:</strong> ถ่ายรูปนามบัตรก่อน แล้วกดปุ่ม "สแกนนามบัตร" ระบบจะอ่านข้อมูลและกรอกให้อัตโนมัติ ตรวจสอบความถูกต้องก่อนกด "ใช้ข้อมูลนี้" ครับ
-      </div>
-    </div>
-
-    <!-- STEP 2: INDUSTRY -->
-    <div class="step" id="step-2">
       <div class="step-hd"><h2>🏭 Your business</h2><p>Help us understand your industry</p></div>
       <div class="field">
         <div class="field-label">Industry type <span class="req">*</span></div>
@@ -299,8 +232,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
 
-    <!-- STEP 3: MACHINES -->
-    <div class="step" id="step-3">
+    <!-- STEP 2: MACHINES (เดิม step-3) -->
+    <div class="step" id="step-2">
       <div class="step-hd"><h2>⚙️ Machine interest</h2><p>Tap to select — set interest &amp; quantity</p></div>
       <div style="background:var(--gold-l);border-left:3px solid var(--gold);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink2);margin-bottom:16px">
         ★ <strong>Featured</strong> machines are on display at our booth
@@ -308,8 +241,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="machine-list"></div>
     </div>
 
-    <!-- STEP 4: TECHNICAL -->
-    <div class="step" id="step-4">
+    <!-- STEP 3: TECHNICAL (เดิม step-4) -->
+    <div class="step" id="step-3">
       <div class="step-hd"><h2>🔧 Technical needs</h2><p>Production requirements</p></div>
       <div class="field"><div class="field-label">Production capacity</div><input type="text" id="f_capacity" placeholder="e.g. 5,000 units/hr, 200 kg/batch"></div>
       <div class="field"><div class="field-label">Container / product type</div><input type="text" id="f_container" placeholder="e.g. tube, bottle, sachet, vial"></div>
@@ -332,8 +265,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="field"><div class="field-label">Special requirements</div><textarea id="f_special" placeholder="e.g. ATEX, clean room, cold chain, SS316L, OEB..."></textarea></div>
     </div>
 
-    <!-- STEP 5: BUDGET -->
-    <div class="step" id="step-5">
+    <!-- STEP 4: BUDGET (เดิม step-5) -->
+    <div class="step" id="step-4">
       <div class="step-hd"><h2>💰 Budget &amp; decision</h2><p>Helps us prepare the right proposal</p></div>
       <div class="field">
         <div class="field-label">Estimated budget (THB)</div>
@@ -366,8 +299,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="field"><div class="field-label">Additional notes</div><textarea id="f_notes" placeholder="Any questions or specific requirements..."></textarea></div>
     </div>
 
-    <!-- STEP 6: SUMMARY -->
-    <div class="step" id="step-6">
+    <!-- STEP 5: SUMMARY (เดิม step-6) -->
+    <div class="step" id="step-5">
       <div class="step-hd"><h2>✅ Review &amp; save</h2><p>Check details before saving</p></div>
       <div id="summary-content"></div>
     </div>
@@ -398,25 +331,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- CAMERA MODAL -->
-<div class="modal" id="cam-modal">
-  <div class="modal-box">
-    <div class="modal-title">📷 Capture Business Card <button class="modal-close" onclick="closeCam()">✕</button></div>
-    <div class="side-toggle">
-      <button class="side-btn active" id="sb-front" onclick="setSide('front')">Front side</button>
-      <button class="side-btn" id="sb-back" onclick="setSide('back')">Back side</button>
-    </div>
-    <div class="video-wrap" id="video-wrap"><div class="cam-msg">Starting camera…</div></div>
-    <div id="cam-live"><button class="cam-shoot" onclick="shootPhoto()">📸 Capture photo</button></div>
-    <div id="cam-confirm" style="display:none">
-      <div class="cam-confirm-row">
-        <button style="background:var(--green);color:white" onclick="confirmPhoto()">✅ Use this photo</button>
-        <button style="background:var(--bg);color:var(--ink);border:1.5px solid var(--border)" onclick="retake()">🔄 Retake</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <img id="lb-img" src="" alt="">
@@ -443,8 +357,9 @@ const MACHINES=[
   {id:'other', name:'Other',                      brand:'',              featured:false, isOther:true},
 ];
 
+// ลบ 'Biz Card' step ออก — เหลือ 6 steps
 const STEPS=[
-  {label:'Visitor'},{label:'Biz Card'},{label:'Business'},
+  {label:'Visitor'},{label:'Business'},
   {label:'Machines'},{label:'Technical'},{label:'Budget'},{label:'Review'},
 ];
 
@@ -553,115 +468,6 @@ function goNext(){
 function goBack(){if(curStep>0) showStep(curStep-1);}
 
 // ══════════════════════════════════════
-// BUSINESS CARD
-// ══════════════════════════════════════
-function renderSlots(){
-  ['front','back'].forEach(side=>{
-    const slot=document.getElementById('slot-'+side);
-    const img=bcards[side];
-    if(img){
-      slot.innerHTML=`<img src="${img}" alt="${side}"><div class="sl-side">${side==='front'?'Front':'Back'}</div><button class="sl-del" onclick="event.stopPropagation();removeCard('${side}')">✕</button>`;
-      slot.classList.add('has-img');
-      slot.onclick=()=>openLB(img);
-    } else {
-      slot.innerHTML=`<div class="sl-icon">📷</div><div class="sl-txt">${side==='front'?'Front side':'Back side'}<br><${side==='front'?`b style="color:var(--red)"`:` span style="color:var(--muted)"`}>${side==='front'?'Tap to add':'Optional'}</${side==='front'?'b':'span'}></div>`;
-      slot.classList.remove('has-img');
-      slot.onclick=()=>openCam(side);
-    }
-  });
-}
-
-function removeCard(side){bcards[side]=null;renderSlots();toast('Removed '+side+' side');}
-
-function handleUpload(e){
-  Array.from(e.target.files).slice(0,2).forEach((f,i)=>{
-    const side=i===0?'front':'back';
-    const r=new FileReader();
-    r.onload=ev=>compressImg(ev.target.result,900,540).then(d=>{bcards[side]=d;renderSlots();toast('✅ Image loaded: '+side);});
-    r.readAsDataURL(f);
-  });
-  e.target.value='';
-}
-
-function compressImg(src,mw,mh,quality){
-  quality=quality||0.85;
-  return new Promise(res=>{
-    const img=new Image();
-    img.onload=()=>{
-      let w=img.width,h=img.height;
-      if(w>mw){h=Math.round(h*mw/w);w=mw;}
-      if(h>mh){w=Math.round(w*mh/h);h=mh;}
-      const c=document.createElement('canvas');
-      c.width=w;c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      res(c.toDataURL('image/jpeg',quality));
-    };
-    img.src=src;
-  });
-}
-
-function setSide(s){
-  camSide=s;
-  document.getElementById('sb-front').classList.toggle('active',s==='front');
-  document.getElementById('sb-back').classList.toggle('active',s==='back');
-}
-
-async function openCam(side){
-  camSide=side||'front';setSide(camSide);
-  capturedUrl=null;
-  document.getElementById('cam-modal').classList.add('open');
-  document.getElementById('cam-live').style.display='block';
-  document.getElementById('cam-confirm').style.display='none';
-  const wrap=document.getElementById('video-wrap');
-  wrap.innerHTML='<div class="cam-msg">Starting camera…</div>';
-  try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}}});
-    const vid=document.createElement('video');
-    vid.srcObject=camStream;vid.autoplay=true;vid.playsInline=true;
-    wrap.innerHTML='';wrap.appendChild(vid);
-  } catch(err){
-    wrap.innerHTML=`<div class="cam-msg" style="color:#e88">Camera unavailable.<br><small>${err.message}</small><br>Use 🖼 Gallery instead.</div>`;
-  }
-}
-
-function shootPhoto(){
-  const vid=document.querySelector('#video-wrap video');
-  if(!vid)return;
-  const c=document.createElement('canvas');
-  c.width=vid.videoWidth||640;c.height=vid.videoHeight||480;
-  c.getContext('2d').drawImage(vid,0,0);
-  capturedUrl=c.toDataURL('image/jpeg',0.9);
-  document.getElementById('video-wrap').innerHTML=`<img src="${capturedUrl}" style="width:100%;height:100%;object-fit:cover">`;
-  document.getElementById('cam-live').style.display='none';
-  document.getElementById('cam-confirm').style.display='block';
-}
-
-function retake(){
-  capturedUrl=null;
-  document.getElementById('cam-confirm').style.display='none';
-  document.getElementById('cam-live').style.display='block';
-  openCam(camSide);
-}
-
-async function confirmPhoto(){
-  if(!capturedUrl)return;
-  bcards[camSide]=await compressImg(capturedUrl,900,540);
-  renderSlots();closeCam();
-  toast('✅ Card saved: '+camSide+' side');
-}
-
-function closeCam(){
-  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
-  document.getElementById('cam-modal').classList.remove('open');
-  document.getElementById('video-wrap').innerHTML='';
-  document.getElementById('cam-confirm').style.display='none';
-  document.getElementById('cam-live').style.display='block';
-}
-
-function openLB(src){document.getElementById('lb-img').src=src;document.getElementById('lightbox').classList.add('open');}
-function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
-
-// ══════════════════════════════════════
 // FORM DATA
 // ══════════════════════════════════════
 const v=id=>(document.getElementById(id)||{}).value||'';
@@ -725,7 +531,6 @@ function loadFormData(d){
       document.getElementById('qty-'+match.id).value=m.qty||'';
       document.querySelectorAll(`#mir-${match.id} .int-chip`).forEach(c=>{if(c.dataset.level===m.interest)c.classList.add('sel');});
     } else {
-      // Other machine
       const otherCard=document.getElementById('mc-other');
       if(otherCard){
         otherCard.classList.add('ticked');
@@ -737,7 +542,6 @@ function loadFormData(d){
     }
   });
   bcards={front:d.bcard_front||null,back:d.bcard_back||null};
-  renderSlots();
 }
 
 // ══════════════════════════════════════
@@ -762,8 +566,7 @@ function buildSummary(){
 }
 
 // ══════════════════════════════════════
-// GOOGLE SHEETS — ผ่าน Netlify Proxy
-// same-origin = ทำงานได้ทุก browser ทุก device
+// GOOGLE SHEETS
 // ══════════════════════════════════════
 async function syncToSheets(data){
   const payload={
@@ -819,7 +622,6 @@ async function loadFromSheets(){
   }
 }
 
-
 // ══════════════════════════════════════
 // LOCAL STORAGE
 // ══════════════════════════════════════
@@ -870,7 +672,7 @@ function clearForm(){
     if(qty)qty.value='';
   });
   document.getElementById('f_ind_other').style.display='none';
-  bcards={front:null,back:null};renderSlots();
+  bcards={front:null,back:null};
 }
 
 function formatBudget(el){
@@ -1016,11 +818,13 @@ async function handleQuickScan(e){
       r.onload=ev=>res(ev.target.result);
       r.readAsDataURL(file);
     });
-    const compressed=await compressImg(dataUrl,800,600);
+
+    // บันทึกรูปเข้า bcards.front ด้วย (compressed สำหรับเก็บ)
+    const compressed=await compressImg(dataUrl,900,540);
+    bcards.front=compressed;
+
     // ส่งรูปขนาดใหญ่กว่าให้ Vision API อ่านได้ชัดขึ้น
     const visionImg=await compressImg(dataUrl,1600,1200,0.95);
-    bcards.front=compressed;
-    renderSlots();
 
     document.getElementById('qs-bar').style.width='40%';
     document.getElementById('qs-status').textContent='กำลังส่งไปวิเคราะห์...';
@@ -1049,6 +853,23 @@ async function handleQuickScan(e){
     toast('❌ สแกนไม่สำเร็จ: '+err.message);
     document.getElementById('qs-progress').style.display='none';
   }
+}
+
+function compressImg(src,mw,mh,quality){
+  quality=quality||0.85;
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>mw){h=Math.round(h*mw/w);w=mw;}
+      if(h>mh){w=Math.round(w*mh/h);h=mh;}
+      const c=document.createElement('canvas');
+      c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg',quality));
+    };
+    img.src=src;
+  });
 }
 
 function parseBusinessCard(text){
@@ -1122,7 +943,9 @@ function dismissQuickScan(){
   qsData={};
 }
 
-// ══════════════════════════════════════
+function openLB(src){document.getElementById('lb-img').src=src;document.getElementById('lightbox').classList.add('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
 function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg;el.classList.add('show');
@@ -1130,7 +953,6 @@ function toast(msg){
 }
 
 init();
-renderSlots();
 </script>
 </body>
 </html>
