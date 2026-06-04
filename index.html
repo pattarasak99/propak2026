@@ -875,29 +875,58 @@ function compressImg(src,mw,mh,quality){
 function parseBusinessCard(text){
   const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
   const result={};
+
+  // Email
   const emailMatch=text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
   if(emailMatch) result.email=emailMatch[0];
-  const phoneMatches=text.match(/(\+?[\d\s\-().]{8,16})/g);
-  if(phoneMatches){
-    const phones=phoneMatches.map(p=>p.replace(/\s/g,'')).filter(p=>p.replace(/\D/g,'').length>=8);
-    if(phones.length) result.phone=phones[0];
-  }
+
+  // Website
   const webMatch=text.match(/(www\.[^\s]+|https?:\/\/[^\s]+)/i);
   if(webMatch) result.website=webMatch[0].replace(/[,.]$/,'');
-  const candidates=lines.filter(l=>
-    !l.includes('@')&&!l.match(/^\+?[\d\s\-().]{6,}$/)&&
-    !l.match(/www\.|http/i)&&l.length>1&&l.length<60
-  );
-  if(candidates.length>0) result.name=candidates[0];
-  const companyKw=/co\.|ltd|inc|corp|pcl|บริษัท|จำกัด|group|international|co,|public/i;
-  const roleKw=/manager|director|engineer|officer|executive|ceo|cto|president|vp|vice|head|ผู้จัดการ|ผู้อำนวยการ|วิศวกร/i;
-  for(let i=1;i<candidates.length;i++){
-    const line=candidates[i];
-    if(!result.company&&companyKw.test(line)) result.company=line;
-    else if(!result.role&&roleKw.test(line)) result.role=line;
-    else if(!result.role&&i===1) result.role=line;
-    else if(!result.company&&i===2) result.company=line;
+
+  // Phone — Mobile ก่อน Tel
+  const mobileMatch=text.match(/[Mm]obile[^\d]*(\(?\+?[\d)(\s\-]{7,16})/);
+  const telMatch=text.match(/[Tt]el[^\d]*(\(?\+?[\d)(\s\-]{7,16})/);
+  const rawPhone=(mobileMatch||telMatch||[])[1]||'';
+  if(rawPhone) result.phone=rawPhone.trim();
+  if(!result.phone){
+    const allNums=text.match(/(\(?\+?[\d]{1,4}[)\s][\d\s\-]{6,14})/g)||[];
+    const filtered=allNums.map(p=>p.trim()).filter(p=>p.replace(/\D/g,'').length>=8);
+    if(filtered.length) result.phone=filtered[0];
   }
+
+  // Keywords
+  const companyKw=/\b(co\.|ltd|limited|inc|corp|pcl|llc|plc|company|group|international|public|บริษัท|จำกัด|กลุ่ม)\b/i;
+  const roleKw=/\b(manager|director|engineer|officer|executive|ceo|cto|coo|president|vp|vice|head|sales|technician|consultant|specialist|ผู้จัดการ|ผู้อำนวยการ|วิศวกร|ช่าง|ที่ปรึกษา)\b/i;
+  const addressKw=/\b(address|road|street|soi|moo|floor|building|อาคาร|ถนน|ซอย|แขวง|เขต|จังหวัด|bangkok|thailand|\d{5})\b/i;
+
+  // กรอง candidate lines
+  const candidates=lines.filter(l=>
+    !l.includes('@') &&
+    !l.match(/^\(?\+?[\d)(\s\-]{7,}$/) &&
+    !l.match(/www\.|http/i) &&
+    !l.match(/[Tt]el\.|[Ff]ax|[Mm]obile/i) &&
+    !addressKw.test(l) &&
+    l.length>1 && l.length<80
+  );
+
+  // ชื่อ — เลือก Latin script ก่อน ถ้าไม่มีค่อยเอาไทย
+  const latinName=candidates.find(l=>/^[A-Za-z]/.test(l)&&!companyKw.test(l)&&!roleKw.test(l));
+  const thaiName=candidates.find(l=>/[\u0E00-\u0E7F]/.test(l)&&!companyKw.test(l)&&!roleKw.test(l));
+  result.name=latinName||thaiName||candidates[0]||'';
+
+  // Role และ Company
+  for(const line of candidates){
+    if(line===result.name) continue;
+    if(!result.role&&roleKw.test(line)) result.role=line;
+    else if(!result.company&&companyKw.test(line)) result.company=line;
+  }
+  // Fallback company
+  if(!result.company){
+    const fallback=candidates.find(l=>l!==result.name&&l!==result.role&&l.length>4);
+    if(fallback) result.company=fallback;
+  }
+
   return result;
 }
 
