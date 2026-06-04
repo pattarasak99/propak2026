@@ -11,6 +11,8 @@ module.exports = async function(req, res) {
     if (!image) return res.status(400).json({error:'No image provided'});
 
     const apiKey = process.env.VISION_API_KEY;
+    if (!apiKey) return res.status(500).json({error:'No API key configured'});
+
     const base64 = image.replace(/^data:image\/\w+;base64,/, '');
 
     const response = await fetch(
@@ -22,7 +24,6 @@ module.exports = async function(req, res) {
           requests: [{
             image: { content: base64 },
             features: [
-              {type:'TEXT_DETECTION', maxResults:1},
               {type:'DOCUMENT_TEXT_DETECTION', maxResults:1}
             ]
           }]
@@ -31,9 +32,11 @@ module.exports = async function(req, res) {
     );
 
     const data = await response.json();
-    const text = data.responses?.[0]?.fullTextAnnotation?.text || 
-                 data.responses?.[0]?.textAnnotations?.[0]?.description || '';
 
+    // ถ้า Vision API return error
+    if (data.error) return res.status(500).json({status:'error', message: data.error.message});
+
+    const text = data.responses?.[0]?.fullTextAnnotation?.text || '';
     return res.status(200).json({status:'ok', text});
 
   } catch(err) {
