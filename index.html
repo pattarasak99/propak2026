@@ -583,7 +583,8 @@ function handleUpload(e){
   e.target.value='';
 }
 
-function compressImg(src,mw,mh){
+function compressImg(src,mw,mh,quality){
+  quality=quality||0.85;
   return new Promise(res=>{
     const img=new Image();
     img.onload=()=>{
@@ -593,7 +594,7 @@ function compressImg(src,mw,mh){
       const c=document.createElement('canvas');
       c.width=w;c.height=h;
       c.getContext('2d').drawImage(img,0,0,w,h);
-      res(c.toDataURL('image/jpeg',0.85));
+      res(c.toDataURL('image/jpeg',quality));
     };
     img.src=src;
   });
@@ -1016,8 +1017,8 @@ async function handleQuickScan(e){
       r.readAsDataURL(file);
     });
     const compressed=await compressImg(dataUrl,800,600);
-    // บีบอัดพิเศษสำหรับ Vision API — ลดขนาดให้ไม่เกิน 1MB
-    const visionImg=await compressImg(dataUrl,640,480);
+    // ส่งรูปขนาดใหญ่กว่าให้ Vision API อ่านได้ชัดขึ้น
+    const visionImg=await compressImg(dataUrl,1600,1200,0.95);
     bcards.front=compressed;
     renderSlots();
 
