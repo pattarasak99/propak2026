@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>PROPAK 2026 — Machine Enquiry</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <style>
 :root{
   --ink:#1a1a2e;--ink2:#4a4a6a;--muted:#8888aa;
@@ -991,15 +991,12 @@ function exportExcel(){
 }
 
 // ══════════════════════════════════════
-// ══════════════════════════════════════
-// QUICK SCAN — สแกนจากหน้าแรกเลย
+// QUICK SCAN — Google Vision API
 // ══════════════════════════════════════
 let qsData={};
 
 function quickScan(){
-  // เปิด camera/gallery ทันที
-  const input=document.getElementById('qs-file');
-  input.click();
+  document.getElementById('qs-file').click();
 }
 
 async function handleQuickScan(e){
@@ -1007,52 +1004,77 @@ async function handleQuickScan(e){
   if(!file)return;
   e.target.value='';
 
-  // แสดง progress
   document.getElementById('qs-progress').style.display='block';
   document.getElementById('qs-result').style.display='none';
-  document.getElementById('qs-bar').style.width='0%';
+  document.getElementById('qs-bar').style.width='10%';
   document.getElementById('qs-status').textContent='กำลังโหลดรูป...';
 
-  // อ่านรูปเป็น dataURL และบันทึกเป็น business card ด้วย
-  const dataUrl=await new Promise(res=>{
-    const r=new FileReader();
-    r.onload=ev=>res(ev.target.result);
-    r.readAsDataURL(file);
-  });
-
-  // บีบอัดรูปก่อน
-  const compressed=await compressImg(dataUrl,900,540);
-
-  // บันทึกเป็น front card ด้วยเลย
-  bcards.front=compressed;
-  renderSlots();
-
-  // Run OCR
   try{
-    const worker=await Tesseract.createWorker(['eng','tha'],1,{
-      logger:m=>{
-        if(m.status==='recognizing text'){
-          const pct=Math.round(m.progress*100);
-          document.getElementById('qs-bar').style.width=pct+'%';
-          document.getElementById('qs-status').textContent=`กำลังอ่านข้อความ... ${pct}%`;
-        } else {
-          document.getElementById('qs-status').textContent=m.status;
-        }
-      }
+    const dataUrl=await new Promise(res=>{
+      const r=new FileReader();
+      r.onload=ev=>res(ev.target.result);
+      r.readAsDataURL(file);
     });
-    const{data:{text}}=await worker.recognize(compressed);
-    await worker.terminate();
+    const compressed=await compressImg(dataUrl,1200,800);
+    bcards.front=compressed;
+    renderSlots();
+
+    document.getElementById('qs-bar').style.width='40%';
+    document.getElementById('qs-status').textContent='กำลังส่งไปวิเคราะห์...';
+
+    const res=await fetch('/api/vision',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image:compressed})
+    });
+
+    document.getElementById('qs-bar').style.width='80%';
+    document.getElementById('qs-status').textContent='กำลังประมวลผล...';
+
+    if(!res.ok) throw new Error('Vision API error: '+res.status);
+    const json=await res.json();
+    if(json.status!=='ok') throw new Error(json.message||'Unknown error');
 
     document.getElementById('qs-bar').style.width='100%';
     document.getElementById('qs-status').textContent='✅ วิเคราะห์เสร็จแล้ว!';
 
-    qsData=parseBusinessCard(text);
+    qsData=parseBusinessCard(json.text||'');
     showQuickScanResult(qsData);
 
   }catch(err){
+    console.error(err);
     toast('❌ สแกนไม่สำเร็จ: '+err.message);
     document.getElementById('qs-progress').style.display='none';
   }
+}
+
+function parseBusinessCard(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+  const result={};
+  const emailMatch=text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  if(emailMatch) result.email=emailMatch[0];
+  const phoneMatches=text.match(/(\+?[\d\s\-().]{8,16})/g);
+  if(phoneMatches){
+    const phones=phoneMatches.map(p=>p.replace(/\s/g,'')).filter(p=>p.replace(/\D/g,'').length>=8);
+    if(phones.length) result.phone=phones[0];
+  }
+  const webMatch=text.match(/(www\.[^\s]+|https?:\/\/[^\s]+)/i);
+  if(webMatch) result.website=webMatch[0].replace(/[,.]$/,'');
+  const candidates=lines.filter(l=>
+    !l.includes('@')&&!l.match(/^\+?[\d\s\-().]{6,}$/)&&
+    !l.match(/www\.|http/i)&&l.length>1&&l.length<60
+  );
+  if(candidates.length>0) result.name=candidates[0];
+  const companyKw=/co\.|ltd|inc|corp|pcl|บริษัท|จำกัด|group|international|co,|public/i;
+  const roleKw=/manager|director|engineer|officer|executive|ceo|cto|president|vp|vice|head|ผู้จัดการ|ผู้อำนวยการ|วิศวกร/i;
+  for(let i=1;i<candidates.length;i++){
+    const line=candidates[i];
+    if(!result.company&&companyKw.test(line)) result.company=line;
+    else if(!result.role&&roleKw.test(line)) result.role=line;
+    else if(!result.role&&i===1) result.role=line;
+    else if(!result.company&&i===2) result.company=line;
+  }
+  return result;
 }
 
 function showQuickScanResult(data){
@@ -1065,13 +1087,11 @@ function showQuickScanResult(data){
     {key:'phone',  label:'โทรศัพท์',     icon:'📞'},
     {key:'website',label:'Website',      icon:'🌐'},
   ];
-
   if(!Object.keys(data).length){
-    container.innerHTML='<div style="color:#1a7a45;font-size:13px;text-align:center;padding:8px">ไม่พบข้อมูลที่ชัดเจน — กรุณากรอกเองด้านล่างครับ</div>';
+    container.innerHTML='<div style="color:#1a7a45;font-size:13px;text-align:center;padding:8px">ไม่พบข้อมูลที่ชัดเจน<br>กรุณากรอกเองด้านล่างครับ</div>';
     document.getElementById('qs-result').style.display='block';
     return;
   }
-
   container.innerHTML=fields.filter(f=>data[f.key]).map(f=>`
     <div style="background:white;border:1px solid rgba(6,214,160,0.3);border-radius:10px;padding:10px 12px">
       <div style="font-size:11px;font-weight:600;color:#1a7a45;margin-bottom:3px">${f.icon} ${f.label}</div>
@@ -1079,17 +1099,16 @@ function showQuickScanResult(data){
         style="width:100%;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;font-family:inherit"
         oninput="qsData['${f.key}']=this.value">
     </div>`).join('');
-
   document.getElementById('qs-result').style.display='block';
 }
 
 function applyQuickScan(){
   const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
-  set('f_name',   qsData.name);
-  set('f_role',   qsData.role);
-  set('f_company',qsData.company);
-  set('f_email',  qsData.email);
-  set('f_phone',  qsData.phone);
+  set('f_name',    qsData.name);
+  set('f_role',    qsData.role);
+  set('f_company', qsData.company);
+  set('f_email',   qsData.email);
+  set('f_phone',   qsData.phone);
   dismissQuickScan();
   toast('✅ กรอกข้อมูลจากบัตรแล้ว — กรุณาตรวจสอบอีกครั้งครับ');
 }
@@ -1100,121 +1119,6 @@ function dismissQuickScan(){
   qsData={};
 }
 
-
-let ocrData={};
-
-async function scanBusinessCard(){
-  if(!bcards.front&&!bcards.back){toast('⚠ กรุณาถ่ายรูปนามบัตรก่อนครับ');return;}
-  const imgSrc=bcards.front||bcards.back;
-  const btn=document.getElementById('btn-ocr');
-  const progress=document.getElementById('ocr-progress');
-  const result=document.getElementById('ocr-result');
-  btn.disabled=true;
-  btn.innerHTML='⏳ กำลังสแกน...';
-  progress.style.display='block';
-  result.style.display='none';
-  try{
-    const worker=await Tesseract.createWorker(['eng','tha'],1,{
-      logger:m=>{
-        if(m.status==='recognizing text'){
-          const pct=Math.round(m.progress*100);
-          document.getElementById('ocr-bar').style.width=pct+'%';
-          document.getElementById('ocr-status').textContent=`กำลังอ่านข้อความ... ${pct}%`;
-        } else {
-          document.getElementById('ocr-status').textContent=m.status;
-        }
-      }
-    });
-    const{data:{text}}=await worker.recognize(imgSrc);
-    await worker.terminate();
-    document.getElementById('ocr-status').textContent='✅ วิเคราะห์เสร็จแล้ว';
-    document.getElementById('ocr-bar').style.width='100%';
-    ocrData=parseBusinessCard(text);
-    showOCRResult(ocrData);
-  }catch(err){
-    toast('❌ สแกนไม่สำเร็จ: '+err.message);
-    progress.style.display='none';
-  }finally{
-    btn.disabled=false;
-    btn.innerHTML='🔍 สแกนนามบัตรอีกครั้ง';
-  }
-}
-
-function parseBusinessCard(text){
-  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
-  const result={};
-  // Email
-  const emailMatch=text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
-  if(emailMatch)result.email=emailMatch[0];
-  // Phone
-  const phoneMatches=text.match(/(\+?[\d\s\-().]{8,16})/g);
-  if(phoneMatches){
-    const phones=phoneMatches.map(p=>p.replace(/\s/g,'')).filter(p=>p.replace(/\D/g,'').length>=8);
-    if(phones.length)result.phone=phones[0];
-  }
-  // Website
-  const webMatch=text.match(/(www\.[^\s]+|https?:\/\/[^\s]+)/i);
-  if(webMatch)result.website=webMatch[0];
-  // Parse name/role/company from lines
-  const candidates=lines.filter(l=>
-    !l.includes('@')&&!l.match(/^\+?[\d\s\-().]{6,}$/)&&
-    !l.match(/www\.|http/i)&&l.length>2&&l.length<60
-  );
-  if(candidates.length>0)result.name=candidates[0];
-  const companyKw=/co\.|ltd|inc|corp|บริษัท|จำกัด|group|international/i;
-  const roleKw=/manager|director|engineer|officer|executive|ceo|president|ผู้จัดการ|ผู้อำนวยการ|วิศวกร/i;
-  for(let i=1;i<candidates.length;i++){
-    const line=candidates[i];
-    if(!result.company&&companyKw.test(line)){result.company=line;}
-    else if(!result.role&&roleKw.test(line)){result.role=line;}
-    else if(!result.role&&i===1){result.role=line;}
-    else if(!result.company&&i===2){result.company=line;}
-  }
-  return result;
-}
-
-function showOCRResult(data){
-  const container=document.getElementById('ocr-fields');
-  const fields=[
-    {key:'name',   label:'ชื่อ-นามสกุล',icon:'👤'},
-    {key:'role',   label:'ตำแหน่ง',     icon:'💼'},
-    {key:'company',label:'บริษัท',       icon:'🏢'},
-    {key:'email',  label:'Email',        icon:'📧'},
-    {key:'phone',  label:'โทรศัพท์',     icon:'📞'},
-    {key:'website',label:'Website',      icon:'🌐'},
-  ];
-  container.innerHTML=fields.filter(f=>data[f.key]).map(f=>`
-    <div style="background:white;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px">
-      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">${f.icon} ${f.label}</div>
-      <input type="text" value="${(data[f.key]||'').replace(/"/g,'&quot;')}" data-field="${f.key}"
-        style="width:100%;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;font-family:inherit"
-        oninput="ocrData['${f.key}']=this.value">
-    </div>`).join('');
-  if(!Object.keys(data).length){
-    container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px">ไม่พบข้อมูลที่อ่านได้ชัดเจน<br>ลองถ่ายรูปใหม่ในที่แสงสว่างขึ้นครับ</div>';
-  }
-  document.getElementById('ocr-result').style.display='block';
-}
-
-function applyOCR(){
-  const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
-  set('f_name',   ocrData.name);
-  set('f_role',   ocrData.role);
-  set('f_company',ocrData.company);
-  set('f_email',  ocrData.email);
-  set('f_phone',  ocrData.phone);
-  dismissOCR();
-  toast('✅ กรอกข้อมูลจากนามบัตรแล้ว — กรุณาตรวจสอบอีกครั้งครับ');
-  setTimeout(()=>showStep(0),800);
-}
-
-function dismissOCR(){
-  document.getElementById('ocr-result').style.display='none';
-  document.getElementById('ocr-progress').style.display='none';
-  ocrData={};
-}
-
-// TOAST + INIT
 // ══════════════════════════════════════
 function toast(msg){
   const el=document.getElementById('toast');
