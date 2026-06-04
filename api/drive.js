@@ -20,7 +20,7 @@ module.exports = async function(req, res) {
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
     const clientEmail = process.env.DRIVE_CLIENT_EMAIL;
-    const folderId    = '0AJF7btp7WqGTUk9PVA';
+    const folderId    = '1n0olOzv8niL7AxpoC8plZFFqnXmwmJlR';
 
     // Handle private key — รองรับทั้ง \n literal และ newline จริง
     let privateKey = process.env.DRIVE_PRIVATE_KEY || '';
