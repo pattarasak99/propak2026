@@ -168,6 +168,19 @@ const API = '/api/sheets';
 let allRecords = [];
 let currentTab = 'overview';
 
+
+// ── DATE HELPER ──
+function fmtDate(val) {
+  if (!val) return '—';
+  if (typeof val === 'string' && val.includes('T')) {
+    try {
+      const d = new Date(val);
+      if (!isNaN(d)) return d.toLocaleDateString('en-GB');
+    } catch(e){}
+  }
+  return val;
+}
+
 async function loadData() {
   document.getElementById('last-update').textContent = 'Loading…';
   try {
@@ -354,14 +367,7 @@ function renderDaily() {
   // Group by date
   const dayMap = {};
   allRecords.forEach(r => {
-    const rawDate = r.date || r.saved_at || 'Unknown';
-    let date = rawDate;
-    if (rawDate.includes('T') || rawDate.includes('-')) {
-      try {
-        const d = new Date(rawDate);
-        if (!isNaN(d)) date = d.toLocaleDateString('en-GB'); // DD/MM/YYYY
-      } catch(e) { date = rawDate; }
-    }
+    const date = fmtDate(r.date || r.saved_at) || 'Unknown';
     if (!dayMap[date]) dayMap[date] = [];
     dayMap[date].push(r);
   });
@@ -387,7 +393,7 @@ function renderDaily() {
     return `
       <div class="day-card">
         <div class="day-title">${dayName}</div>
-        <div class="day-date">${date}</div>
+        <div class="day-date">${fmtDate(date)}</div>
         <div class="day-stats">
           <div class="day-stat">
             <div class="day-stat-num">${recs.length}</div>
@@ -476,7 +482,7 @@ function renderVisitors() {
               <td style="max-width:180px">${mList||'—'}</td>
               <td>${tl?`<span class="tag ${tlClass}">${tl.split('(')[0].trim()}</span>`:'—'}</td>
               <td>${r.budget||'—'}</td>
-              <td style="font-size:11px;color:var(--text3)">${r.date||'—'}</td>
+              <td style="font-size:11px;color:var(--text3)">${fmtDate(r.date||r.saved_at)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -509,11 +515,7 @@ function exportExcel(){
   // Daily Summary sheet
   const dayMap={};
   allRecords.forEach(r=>{
-    const rawD = r.date || r.saved_at || 'Unknown';
-    let d = rawD;
-    if (rawD.includes('T') || (rawD.includes('-') && rawD.length > 10)) {
-      try { const dt=new Date(rawD); if(!isNaN(dt)) d=dt.toLocaleDateString('en-GB'); } catch(e){}
-    }
+    const d = fmtDate(r.date || r.saved_at) || 'Unknown';
     if(!dayMap[d])dayMap[d]={visitors:0,high:0,medium:0,low:0,immediate:0,machines:{}};
     dayMap[d].visitors++;
     if((r.timeline||'').includes('Immediate'))dayMap[d].immediate++;
