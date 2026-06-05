@@ -615,7 +615,7 @@ async function syncToSheets(data){
     automation:data.automation||'',certification:data.certification||'',special_req:data.special_req||'',
     budget:data.budget||'',decision_role:data.decision_role||'',followup:data.followup||'',
     notes:data.notes||'',
-    sample_urls:data.sample_urls||[],
+    sample_urls:(data.sample_urls||[]).join(', '),
     bcard_front:data.bcard_front_url||( data.bcard_front?'[image attached]':null),
     bcard_back:data.bcard_back_url||(data.bcard_back?'[image attached]':null),
   };
