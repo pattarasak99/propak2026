@@ -354,12 +354,23 @@ function renderDaily() {
   // Group by date
   const dayMap = {};
   allRecords.forEach(r => {
-    const date = r.date || r.saved_at?.slice(0,10) || 'Unknown';
+    const rawDate = r.date || r.saved_at || 'Unknown';
+    let date = rawDate;
+    if (rawDate.includes('T') || rawDate.includes('-')) {
+      try {
+        const d = new Date(rawDate);
+        if (!isNaN(d)) date = d.toLocaleDateString('en-GB'); // DD/MM/YYYY
+      } catch(e) { date = rawDate; }
+    }
     if (!dayMap[date]) dayMap[date] = [];
     dayMap[date].push(r);
   });
 
-  const days = Object.entries(dayMap).sort((a,b) => a[0].localeCompare(b[0]));
+  const days = Object.entries(dayMap).sort((a,b) => {
+    // Parse DD/MM/YYYY for sorting
+    const parseD = s => { const p=s.split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]):new Date(s); };
+    return parseD(a[0]) - parseD(b[0]);
+  });
 
   if (!days.length) {
     document.getElementById('main-content').innerHTML = '<div class="empty">No daily data available</div>';
@@ -498,7 +509,11 @@ function exportExcel(){
   // Daily Summary sheet
   const dayMap={};
   allRecords.forEach(r=>{
-    const d=r.date||'Unknown';
+    const rawD = r.date || r.saved_at || 'Unknown';
+    let d = rawD;
+    if (rawD.includes('T') || (rawD.includes('-') && rawD.length > 10)) {
+      try { const dt=new Date(rawD); if(!isNaN(dt)) d=dt.toLocaleDateString('en-GB'); } catch(e){}
+    }
     if(!dayMap[d])dayMap[d]={visitors:0,high:0,medium:0,low:0,immediate:0,machines:{}};
     dayMap[d].visitors++;
     if((r.timeline||'').includes('Immediate'))dayMap[d].immediate++;
