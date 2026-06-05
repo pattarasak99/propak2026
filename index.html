@@ -299,8 +299,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="field"><div class="field-label">Additional notes</div><textarea id="f_notes" placeholder="Any questions or specific requirements..."></textarea></div>
     </div>
 
-    <!-- STEP 5: SUMMARY (เดิม step-6) -->
+    <!-- STEP 5: SAMPLE PHOTOS -->
     <div class="step" id="step-5">
+      <div class="step-hd"><h2>📷 Sample Photos</h2><p>ถ่ายรูปตัวอย่างสินค้าหรือเอกสารที่ลูกค้านำมา (ไม่บังคับ)</p></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button onclick="addSamplePhoto('cam')" style="flex:1;height:50px;background:var(--ink);color:white;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">📷 Camera</button>
+        <button onclick="addSamplePhoto('file')" style="flex:1;height:50px;background:white;color:var(--ink);border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">🖼 Gallery</button>
+      </div>
+      <input type="file" id="sample-file" accept="image/*" multiple style="display:none" onchange="handleSampleUpload(event)">
+      <div id="sample-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px"></div>
+      <div style="font-size:13px;color:var(--muted);padding:10px;background:var(--bg);border-radius:10px">
+        💡 ถ่ายรูปตัวอย่างสินค้า บรรจุภัณฑ์ หรือเอกสารที่ลูกค้านำมาได้เลยครับ — รูปจะถูกบันทึกพร้อมกับข้อมูลผู้เข้าชม
+      </div>
+    </div>
+
+    <!-- STEP 6: SUMMARY (เดิม step-5) -->
+    <div class="step" id="step-6">
       <div class="step-hd"><h2>✅ Review &amp; save</h2><p>Check details before saving</p></div>
       <div id="summary-content"></div>
     </div>
@@ -328,6 +342,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button style="background:var(--blue);color:white" onclick="loadFromSheets()">☁️ Load Sheets</button>
     <button style="background:var(--green);color:white" onclick="exportExcel()">📊 Excel</button>
     <button style="background:var(--bg);color:var(--red);border:1.5px solid var(--red-m)" onclick="clearAllRecs()">🗑 Clear</button>
+  </div>
+</div>
+
+
+<!-- CAMERA MODAL -->
+<div class="modal" id="cam-modal">
+  <div class="modal-box">
+    <div class="modal-title">📷 Capture Photo <button class="modal-close" onclick="closeCam()">✕</button></div>
+    <div class="side-toggle" id="cam-side-toggle">
+      <button class="side-btn active" id="sb-front" onclick="setSide('front')">Front side</button>
+      <button class="side-btn" id="sb-back" onclick="setSide('back')">Back side</button>
+    </div>
+    <div class="video-wrap" id="video-wrap"><div class="cam-msg">Starting camera…</div></div>
+    <div id="cam-live"><button class="cam-shoot" onclick="shootPhoto()">📸 Capture photo</button></div>
+    <div id="cam-confirm" style="display:none">
+      <div class="cam-confirm-row">
+        <button style="background:var(--green);color:white" onclick="confirmPhoto()">✅ Use this photo</button>
+        <button style="background:var(--bg);color:var(--ink);border:1.5px solid var(--border)" onclick="retake()">🔄 Retake</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -360,11 +394,12 @@ const MACHINES=[
 // ลบ 'Biz Card' step ออก — เหลือ 6 steps
 const STEPS=[
   {label:'Visitor'},{label:'Business'},
-  {label:'Machines'},{label:'Technical'},{label:'Budget'},{label:'Review'},
+  {label:'Machines'},{label:'Technical'},{label:'Budget'},{label:'Photos'},{label:'Review'},
 ];
 
 let curStep=0;
 let bcards={front:null,back:null};
+let samplePhotos=[];
 let camStream=null,camSide='front',capturedUrl=null;
 
 // ══════════════════════════════════════
@@ -456,6 +491,7 @@ function showStep(n){
   document.getElementById('btn-next').style.display=n<STEPS.length-1?'flex':'none';
   document.getElementById('btn-save').style.display=n===STEPS.length-1?'flex':'none';
   if(n===STEPS.length-1) buildSummary();
+  if(n===5) renderSampleGrid();
   const stepEl=document.getElementById('step-'+n);
   if(stepEl) stepEl.scrollTop=0;
   curStep=n;
@@ -498,6 +534,7 @@ function getFormData(){
     decision_role:getRadio('g_decision'),followup:getMulti('g_followup'),
     notes:v('f_notes'),
     bcard_front:bcards.front,bcard_back:bcards.back,
+    sample_photos:samplePhotos.slice(),
     saved_at:new Date().toISOString()
   };
 }
@@ -557,6 +594,7 @@ function buildSummary(){
   document.getElementById('summary-content').innerHTML=`
     <div class="summary-card"><h4>Visitor</h4>${row('Name',d.name)}${row('Company',d.company)}${row('Role',d.role)}${row('Email',d.email)}${row('Phone',d.phone)}${row('Country',d.country)}</div>
     <div class="summary-card"><h4>Business card</h4>${bcardHtml}</div>
+    ${d.sample_photos&&d.sample_photos.length?`<div class="summary-card"><h4>Sample Photos (${d.sample_photos.length})</h4><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">${d.sample_photos.map((img,i)=>`<img src="${img}" onclick="openLB('${img}')" style="height:60px;border-radius:7px;border:1px solid var(--border);cursor:pointer">`).join('')}</div></div>`:''}
     <div class="summary-card"><h4>Business</h4>${row('Industry',d.industry)}${row('Timeline',d.timeline)}</div>
     <div class="summary-card"><h4>Machines (${(d.machines||[]).length} selected)</h4>${mList||'<div style="color:var(--muted);font-size:13px">None selected</div>'}</div>
     <div class="summary-card"><h4>Technical</h4>${row('Capacity',d.capacity)}${row('Container',d.container)}${row('Automation',d.automation)}${row('Certification',d.certification)}${row('Special req.',d.special_req)}</div>
@@ -577,6 +615,7 @@ async function syncToSheets(data){
     automation:data.automation||'',certification:data.certification||'',special_req:data.special_req||'',
     budget:data.budget||'',decision_role:data.decision_role||'',followup:data.followup||'',
     notes:data.notes||'',
+    sample_urls:data.sample_urls||[],
     bcard_front:data.bcard_front_url||( data.bcard_front?'[image attached]':null),
     bcard_back:data.bcard_back_url||(data.bcard_back?'[image attached]':null),
   };
@@ -675,8 +714,18 @@ async function saveRecord(){
     if(link) d.bcard_back_url=link;
   }
 
+  // Upload sample photos
+  if(d.sample_photos&&d.sample_photos.length){
+    const sampleUrls=[];
+    for(let i=0;i<d.sample_photos.length;i++){
+      const link=await uploadToDrive(d.sample_photos[i], `${d.ref}_${safeName}_sample${i+1}.jpg`);
+      if(link) sampleUrls.push(link);
+    }
+    if(sampleUrls.length) d.sample_urls=sampleUrls;
+  }
+
   // อัพเดท record ใน localStorage พร้อม Drive URL
-  saveRecs(getRecs().map(r=>r.id===d.id?{...r,bcard_front_url:d.bcard_front_url,bcard_back_url:d.bcard_back_url}:r));
+  saveRecs(getRecs().map(r=>r.id===d.id?{...r,bcard_front_url:d.bcard_front_url,bcard_back_url:d.bcard_back_url,sample_urls:d.sample_urls}:r));
 
   const ok=await syncToSheets(d);
   if(ok){
@@ -706,6 +755,8 @@ function clearForm(){
   });
   document.getElementById('f_ind_other').style.display='none';
   bcards={front:null,back:null};
+  samplePhotos=[];
+  renderSampleGrid();
 }
 
 function formatBudget(el){
@@ -1008,6 +1059,133 @@ function dismissQuickScan(){
 
 function openLB(src){document.getElementById('lb-img').src=src;document.getElementById('lightbox').classList.add('open');}
 function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
+
+
+// ══════════════════════════════════════
+// CAMERA
+// ══════════════════════════════════════
+function setSide(s){
+  camSide=s;
+  const toggle=document.getElementById('cam-side-toggle');
+  if(toggle){
+    document.getElementById('sb-front').classList.toggle('active',s==='front');
+    document.getElementById('sb-back').classList.toggle('active',s==='back');
+  }
+}
+
+async function openCam(side){
+  camSide=side||'front';setSide(camSide);
+  const toggle=document.getElementById('cam-side-toggle');
+  if(toggle) toggle.style.display=camSide==='sample'?'none':'flex';
+  capturedUrl=null;
+  document.getElementById('cam-modal').classList.add('open');
+  document.getElementById('cam-live').style.display='block';
+  document.getElementById('cam-confirm').style.display='none';
+  const wrap=document.getElementById('video-wrap');
+  wrap.innerHTML='<div class="cam-msg">Starting camera…</div>';
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}}});
+    const vid=document.createElement('video');
+    vid.srcObject=camStream;vid.autoplay=true;vid.playsInline=true;
+    wrap.innerHTML='';wrap.appendChild(vid);
+  } catch(err){
+    wrap.innerHTML=`<div class="cam-msg" style="color:#e88">Camera unavailable.<br><small>${err.message}</small><br>Use 🖼 Gallery instead.</div>`;
+  }
+}
+
+function shootPhoto(){
+  const vid=document.querySelector('#video-wrap video');
+  if(!vid)return;
+  const c=document.createElement('canvas');
+  c.width=vid.videoWidth||640;c.height=vid.videoHeight||480;
+  c.getContext('2d').drawImage(vid,0,0);
+  capturedUrl=c.toDataURL('image/jpeg',0.9);
+  document.getElementById('video-wrap').innerHTML=`<img src="${capturedUrl}" style="width:100%;height:100%;object-fit:cover">`;
+  document.getElementById('cam-live').style.display='none';
+  document.getElementById('cam-confirm').style.display='block';
+}
+
+function retake(){
+  capturedUrl=null;
+  document.getElementById('cam-confirm').style.display='none';
+  document.getElementById('cam-live').style.display='block';
+  openCam(camSide);
+}
+
+async function confirmPhoto(){
+  if(!capturedUrl)return;
+  if(camSide==='sample'){
+    const compressed=await compressImg(capturedUrl,1200,900,0.85);
+    samplePhotos.push(compressed);
+    renderSampleGrid();
+    closeCam();
+    toast('✅ Sample photo saved ('+samplePhotos.length+' total)');
+  } else {
+    bcards[camSide]=await compressImg(capturedUrl,900,540);
+    closeCam();
+    toast('✅ Card saved: '+camSide+' side');
+  }
+}
+
+function closeCam(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  document.getElementById('cam-modal').classList.remove('open');
+  document.getElementById('video-wrap').innerHTML='';
+  document.getElementById('cam-confirm').style.display='none';
+  document.getElementById('cam-live').style.display='block';
+}
+
+// ══════════════════════════════════════
+// SAMPLE PHOTOS
+// ══════════════════════════════════════
+function addSamplePhoto(mode) {
+  if (mode === 'file') {
+    document.getElementById('sample-file').click();
+  } else {
+    openCamSample();
+  }
+}
+
+async function handleSampleUpload(e) {
+  const files = Array.from(e.target.files).slice(0, 10);
+  for (const file of files) {
+    const r = new FileReader();
+    await new Promise(res => {
+      r.onload = async ev => {
+        const compressed = await compressImg(ev.target.result, 1200, 900, 0.85);
+        samplePhotos.push(compressed);
+        res();
+      };
+      r.readAsDataURL(file);
+    });
+  }
+  e.target.value = '';
+  renderSampleGrid();
+}
+
+function renderSampleGrid() {
+  const grid = document.getElementById('sample-grid');
+  if (!grid) return;
+  if (!samplePhotos.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-size:13px">ยังไม่มีรูป — กดถ่ายรูปหรืออัพโหลดได้เลย</div>';
+    return;
+  }
+  grid.innerHTML = samplePhotos.map((img, i) => `
+    <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg)">
+      <img src="${img}" style="width:100%;height:100%;object-fit:cover" onclick="openLB('${img}')">
+      <button onclick="removeSamplePhoto(${i})" style="position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(200,16,46,0.9);color:white;border:none;border-radius:50%;font-size:11px;cursor:pointer">✕</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);color:white;font-size:9px;text-align:center;padding:2px">${i+1}/${samplePhotos.length}</div>
+    </div>
+  `).join('');
+}
+
+function removeSamplePhoto(idx) {
+  samplePhotos.splice(idx, 1);
+  renderSampleGrid();
+}
+
+function openCamSample() { openCam('sample'); }
 
 function toast(msg){
   const el=document.getElementById('toast');
