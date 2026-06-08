@@ -980,13 +980,27 @@ function parseBusinessCard(text){
     if(filtered.length) result.phone=filtered[0];
   }
 
+  // Country — detect บรรทัดที่เป็นชื่อประเทศเดี่ยวๆ
+  const countryList=/^(thailand|singapore|malaysia|indonesia|vietnam|philippines|myanmar|cambodia|laos|japan|china|korea|india|usa|uk|germany|france|australia)$/i;
+  const countryLine=lines.find(l=>countryList.test(l.trim()));
+  if(countryLine) result.country=countryLine.trim();
+
   // Keywords
   const companyKw=/\b(co\.|ltd|limited|inc|corp|pcl|llc|plc|company|group|international|public|บริษัท|จำกัด|กลุ่ม)\b/i;
   const roleKw=/\b(manager|director|engineer|officer|executive|ceo|cto|coo|president|vp|vice|head|sales|technician|consultant|specialist|ผู้จัดการ|ผู้อำนวยการ|วิศวกร|ช่าง|ที่ปรึกษา)\b/i;
-  const addressKw=/\b(address|road|street|soi|moo|floor|building|อาคาร|ถนน|ซอย|แขวง|เขต|จังหวัด|bangkok|thailand|\d{5})\b/i;
+  const addressKw=/\b(address|road|street|soi|moo|floor|building|อาคาร|ถนน|ซอย|แขวง|เขต|จังหวัด|\d{5})\b/i;
 
-  // กรอง noise สำหรับ Exhibition badge
-  const noiseKw=/^(exhibitor|visitor|speaker|organizer|media|press|vip|staff|propak|informa|impact|muang|thong|thani|asia|edition|anniversary|june|july|august|new venue|thailand|the premier|global|exhibition|processing|packaging|asia 2026)$/i;
+  // Noise — ใช้ contains แทน exact match เพื่อจับ partial noise
+  const isNoise=l=>{
+    const s=l.trim().toLowerCase();
+    return (
+      /^(exhibitor|visitor|speaker|organizer|media|press|vip|staff)$/i.test(s) ||
+      /propak|informa|impact arena|muang thong|anniversary|new venue|the premier|processing.*packaging|packaging.*asia/i.test(s) ||
+      /^[a-z0-9]{10,}$/i.test(s) ||    // QR code string
+      /\d{1,2}-\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(s) || // date range
+      countryList.test(s)               // country line
+    );
+  };
 
   // กรอง candidate lines
   const candidates=lines.filter(l=>
@@ -995,9 +1009,7 @@ function parseBusinessCard(text){
     !l.match(/www\.|http/i) &&
     !l.match(/[Tt]el\.|[Ff]ax|[Mm]obile/i) &&
     !addressKw.test(l) &&
-    !noiseKw.test(l.trim()) &&
-    !l.match(/^[A-Z0-9]{10,}$/) &&
-    !l.match(/\d{1,2}-\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i) &&
+    !isNoise(l) &&
     l.length>1 && l.length<80
   );
 
@@ -1054,6 +1066,7 @@ function applyQuickScan(){
   set('f_company', qsData.company);
   set('f_email',   qsData.email);
   set('f_phone',   qsData.phone);
+  set('f_country', qsData.country);
   set('f_country', qsData.country);
   dismissQuickScan();
   toast('✅ กรอกข้อมูลจากบัตรแล้ว — กรุณาตรวจสอบอีกครั้งครับ');
