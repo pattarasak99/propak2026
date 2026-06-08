@@ -980,18 +980,13 @@ function parseBusinessCard(text){
     if(filtered.length) result.phone=filtered[0];
   }
 
-  // Country detection
-  const countryKw=/\b(thailand|vietnam|indonesia|malaysia|singapore|philippines|myanmar|cambodia|laos|india|china|japan|korea|taiwan|hongkong|hong kong)\b/i;
-  const countryMatch=text.match(countryKw);
-  if(countryMatch) result.country=countryMatch[0].replace(/\b\w/g,c=>c.toUpperCase());
-
-  // Noise words ที่ต้องกรองออก (event/exhibitor card specific)
-  const noiseKw=/^(EXHIBITOR|VISITOR|SPEAKER|MEDIA|ORGANIZER|PROPAK|IMPACT|ASIA|ANNIVERSARY|EDITION|informa|markets|The Premier|Processing|Packaging|New Venue|Muang Thong|Thailand\b)$/i;
-
   // Keywords
   const companyKw=/\b(co\.|ltd|limited|inc|corp|pcl|llc|plc|company|group|international|public|บริษัท|จำกัด|กลุ่ม)\b/i;
-  const roleKw=/\b(manager|director|engineer|officer|executive|ceo|cto|coo|president|vp|vice|head|sales|technician|consultant|specialist|service|ผู้จัดการ|ผู้อำนวยการ|วิศวกร|ช่าง|ที่ปรึกษา)\b/i;
-  const addressKw=/\b(address|road|street|soi|moo|floor|building|อาคาร|ถนน|ซอย|แขวง|เขต|จังหวัด|bangkok|\d{5})\b/i;
+  const roleKw=/\b(manager|director|engineer|officer|executive|ceo|cto|coo|president|vp|vice|head|sales|technician|consultant|specialist|ผู้จัดการ|ผู้อำนวยการ|วิศวกร|ช่าง|ที่ปรึกษา)\b/i;
+  const addressKw=/\b(address|road|street|soi|moo|floor|building|อาคาร|ถนน|ซอย|แขวง|เขต|จังหวัด|bangkok|thailand|\d{5})\b/i;
+
+  // กรอง noise สำหรับ Exhibition badge
+  const noiseKw=/^(exhibitor|visitor|speaker|organizer|media|press|vip|staff|propak|informa|impact|muang|thong|thani|asia|edition|anniversary|june|july|august|new venue|thailand|the premier|global|exhibition|processing|packaging|asia 2026)$/i;
 
   // กรอง candidate lines
   const candidates=lines.filter(l=>
@@ -1001,8 +996,8 @@ function parseBusinessCard(text){
     !l.match(/[Tt]el\.|[Ff]ax|[Mm]obile/i) &&
     !addressKw.test(l) &&
     !noiseKw.test(l.trim()) &&
-    !l.match(/^[A-Z0-9]{8,}$/) &&   // กรอง QR code / barcode string
-    !countryKw.test(l.trim()) &&     // กรอง country line ออก (เก็บใน result.country แล้ว)
+    !l.match(/^[A-Z0-9]{10,}$/) &&
+    !l.match(/\d{1,2}-\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i) &&
     l.length>1 && l.length<80
   );
 
@@ -1017,6 +1012,7 @@ function parseBusinessCard(text){
     if(!result.role&&roleKw.test(line)) result.role=line;
     else if(!result.company&&companyKw.test(line)) result.company=line;
   }
+
   // Fallback company
   if(!result.company){
     const fallback=candidates.find(l=>l!==result.name&&l!==result.role&&l.length>4);
@@ -1025,7 +1021,6 @@ function parseBusinessCard(text){
 
   return result;
 }
-
 function showQuickScanResult(data){
   const container=document.getElementById('qs-fields');
   const fields=[
