@@ -163,11 +163,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
       <!-- SCAN CARD BUTTON -->
       <div style="margin-bottom:20px">
-        <button onclick="quickScan()"
-          style="width:100%;height:56px;background:linear-gradient(135deg,#1a1a2e,#1a5fa8);color:white;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(26,95,168,0.3)">
-          📷 สแกน Business / Visitor Card
-        </button>
-        <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px">ถ่ายรูปบัตรแล้วกรอกข้อมูลอัตโนมัติ หรือกรอกเองด้านล่าง</div>
+        <div style="display:flex;gap:10px;margin-bottom:8px">
+          <button onclick="quickScan('biz')"
+            style="flex:1;height:56px;background:linear-gradient(135deg,#1a1a2e,#1a5fa8);color:white;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(26,95,168,0.3)">
+            📇 Business Card
+          </button>
+          <button onclick="quickScan('badge')"
+            style="flex:1;height:56px;background:linear-gradient(135deg,#1a7a45,#06d6a0);color:white;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(6,214,160,0.3)">
+            🪪 Exhibitor Badge
+          </button>
+        </div>
+        <div style="text-align:center;font-size:12px;color:var(--muted)">ถ่ายรูปบัตรแล้วกรอกข้อมูลอัตโนมัติ หรือกรอกเองด้านล่าง</div>
       </div>
 
       <!-- Quick scan progress (inline) -->
@@ -190,6 +196,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
       <!-- Hidden file input for quick scan -->
       <input type="file" id="qs-file" accept="image/*" capture="environment" style="display:none" onchange="handleQuickScan(event)">
+      <input type="file" id="qs-file-gallery" accept="image/*" style="display:none" onchange="handleQuickScan(event)">
 
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
         <div style="flex:1;height:1px;background:var(--border)"></div>
@@ -883,7 +890,10 @@ function exportExcel(){
 // ══════════════════════════════════════
 let qsData={};
 
-function quickScan(){
+let qsScanMode = 'biz'; // 'biz' or 'badge'
+
+function quickScan(mode){
+  qsScanMode = mode || 'biz';
   document.getElementById('qs-file').click();
 }
 
@@ -908,8 +918,14 @@ async function handleQuickScan(e){
     const compressed=await compressImg(dataUrl,900,540);
     bcards.front=compressed;
 
-    // ส่งรูปขนาดใหญ่กว่าให้ Vision API อ่านได้ชัดขึ้น
-    const visionImg=await compressImg(dataUrl,1600,1200,0.95);
+    // ถ้าเป็น Exhibitor Badge → crop 70% ตรงกลางก่อนส่ง Vision API
+    let visionImg;
+    if(qsScanMode==='badge'){
+      const cropped=await cropCenter(dataUrl,0.7);
+      visionImg=await compressImg(cropped,1600,1200,0.95);
+    } else {
+      visionImg=await compressImg(dataUrl,1600,1200,0.95);
+    }
 
     document.getElementById('qs-bar').style.width='40%';
     document.getElementById('qs-status').textContent='กำลังส่งไปวิเคราะห์...';
@@ -938,6 +954,25 @@ async function handleQuickScan(e){
     toast('❌ สแกนไม่สำเร็จ: '+err.message);
     document.getElementById('qs-progress').style.display='none';
   }
+}
+
+// crop ตรงกลางรูป fraction = สัดส่วนที่ต้องการเก็บ (0.7 = 70%)
+function cropCenter(src, fraction){
+  fraction = fraction || 0.7;
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const sw=Math.round(img.width*fraction);
+      const sh=Math.round(img.height*fraction);
+      const sx=Math.round((img.width-sw)/2);
+      const sy=Math.round((img.height-sh)/2);
+      const c=document.createElement('canvas');
+      c.width=sw; c.height=sh;
+      c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
+      res(c.toDataURL('image/jpeg',0.95));
+    };
+    img.src=src;
+  });
 }
 
 function compressImg(src,mw,mh,quality){
