@@ -167,7 +167,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="margin-bottom:8px">
           <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;padding-left:2px">📇 Business Card</div>
           <div style="display:flex;gap:8px">
-            <button onclick="quickScan('biz','cam')"
+            <button onclick="openQsCam('biz')"
               style="flex:1;height:48px;background:linear-gradient(135deg,#1a1a2e,#1a5fa8);color:white;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
               📷 ถ่ายรูป
             </button>
@@ -181,7 +181,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="margin-bottom:8px">
           <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;padding-left:2px">🪪 Exhibitor / Visitor Badge</div>
           <div style="display:flex;gap:8px">
-            <button onclick="quickScan('badge','cam')"
+            <button onclick="openQsCam('badge')"
               style="flex:1;height:48px;background:linear-gradient(135deg,#1a7a45,#06d6a0);color:white;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
               📷 ถ่ายรูป
             </button>
@@ -910,6 +910,39 @@ let qsData={};
 
 let qsScanMode = 'biz'; // 'biz' or 'badge'
 
+// เปิดกล้องสำหรับ Quick Scan โดยตรง (ใช้ getUserMedia)
+async function openQsCam(mode){
+  qsScanMode = mode || 'biz';
+  camSide = 'qs_' + mode; // special side for QS camera
+  capturedUrl = null;
+
+  // Update modal title
+  const modal = document.getElementById('cam-modal');
+  const title = modal.querySelector('.modal-title');
+  if(title) title.childNodes[0].textContent = mode==='badge' ? '🪪 Capture Exhibitor Badge ' : '📇 Capture Business Card ';
+
+  // Hide side toggle (not needed for QS)
+  const toggle = document.getElementById('cam-side-toggle');
+  if(toggle) toggle.style.display = 'none';
+
+  modal.classList.add('open');
+  document.getElementById('cam-live').style.display='block';
+  document.getElementById('cam-confirm').style.display='none';
+
+  const wrap = document.getElementById('video-wrap');
+  wrap.innerHTML = '<div class="cam-msg">Starting camera…</div>';
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280}}
+    });
+    const vid = document.createElement('video');
+    vid.srcObject=camStream; vid.autoplay=true; vid.playsInline=true;
+    wrap.innerHTML=''; wrap.appendChild(vid);
+  } catch(err){
+    wrap.innerHTML=`<div class="cam-msg" style="color:#e88">Camera unavailable.<br><small>${err.message}</small><br>ใช้ปุ่ม 🖼 อัลบั้ม แทนครับ</div>`;
+  }
+}
+
 function quickScan(mode, source){
   qsScanMode = mode || 'biz';
   if(source === 'album'){
@@ -919,28 +952,16 @@ function quickScan(mode, source){
   }
 }
 
-async function handleQuickScan(e){
-  const file=e.target.files[0];
-  if(!file)return;
-  e.target.value='';
-
+async function processQsScan(dataUrl, mode){
+  qsScanMode = mode || 'biz';
   document.getElementById('qs-progress').style.display='block';
   document.getElementById('qs-result').style.display='none';
   document.getElementById('qs-bar').style.width='10%';
   document.getElementById('qs-status').textContent='กำลังโหลดรูป...';
-
   try{
-    const dataUrl=await new Promise(res=>{
-      const r=new FileReader();
-      r.onload=ev=>res(ev.target.result);
-      r.readAsDataURL(file);
-    });
-
-    // บันทึกรูปเข้า bcards.front ด้วย (compressed สำหรับเก็บ)
     const compressed=await compressImg(dataUrl,900,540);
     bcards.front=compressed;
 
-    // ถ้าเป็น Exhibitor Badge → crop 70% ตรงกลางก่อนส่ง Vision API
     let visionImg;
     if(qsScanMode==='badge'){
       const cropped=await cropCenter(dataUrl,0.7);
@@ -970,12 +991,23 @@ async function handleQuickScan(e){
 
     qsData=parseBusinessCard(json.text||'');
     showQuickScanResult(qsData);
-
   }catch(err){
     console.error(err);
     toast('❌ สแกนไม่สำเร็จ: '+err.message);
     document.getElementById('qs-progress').style.display='none';
   }
+}
+
+async function handleQuickScan(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  e.target.value='';
+  const dataUrl=await new Promise(res=>{
+    const r=new FileReader();
+    r.onload=ev=>res(ev.target.result);
+    r.readAsDataURL(file);
+  });
+  await processQsScan(dataUrl, qsScanMode);
 }
 
 // crop ตรงกลางรูป fraction = สัดส่วนที่ต้องการเก็บ (0.7 = 70%)
@@ -1199,6 +1231,14 @@ async function confirmPhoto(){
     renderSampleGrid();
     closeCam();
     toast('✅ Sample photo saved ('+samplePhotos.length+' total)');
+  } else if(camSide==='qs_biz'||camSide==='qs_badge'){
+    // Quick Scan from camera — process like handleQuickScan
+    const mode = camSide==='qs_badge' ? 'badge' : 'biz';
+    closeCam();
+    // Restore side toggle visibility
+    const toggle=document.getElementById('cam-side-toggle');
+    if(toggle) toggle.style.display='flex';
+    await processQsScan(capturedUrl, mode);
   } else {
     bcards[camSide]=await compressImg(capturedUrl,900,540);
     closeCam();
