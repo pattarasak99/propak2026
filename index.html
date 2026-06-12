@@ -675,11 +675,20 @@ async function loadFromSheets(){
     local.forEach(r=>{if(r.ref)localMap[r.ref]=r;});
     const merged=incoming.map(r=>({
       ...r,
+      // เก็บ Cloudinary URL ไว้แสดงผล
       bcard_front_url:r.bcard_front&&r.bcard_front.startsWith("http")?r.bcard_front:null,
-      bcard_front:localMap[r.ref]&&localMap[r.ref].bcard_front?localMap[r.ref].bcard_front:(r.bcard_front&&r.bcard_front.startsWith("http")?r.bcard_front:null),
-      bcard_back: localMap[r.ref]&&localMap[r.ref].bcard_back ?localMap[r.ref].bcard_back :null,
+      // เก็บ base64 จาก localStorage เฉพาะถ้ามี — ไม่เก็บ URL ซ้ำเป็น base64
+      bcard_front:localMap[r.ref]&&localMap[r.ref].bcard_front&&!localMap[r.ref].bcard_front.startsWith("http")?localMap[r.ref].bcard_front:null,
+      bcard_back:localMap[r.ref]&&localMap[r.ref].bcard_back&&!localMap[r.ref].bcard_back.startsWith("http")?localMap[r.ref].bcard_back:null,
     }));
-    saveRecs(merged);renderRecords();
+    // บันทึกแบบไม่เก็บ base64 รูปขนาดใหญ่ เพื่อไม่ให้ localStorage เกิน 5MB
+    const mergedLight=merged.map(r=>({
+      ...r,
+      bcard_front: r.bcard_front && r.bcard_front.length > 100000 ? null : r.bcard_front,
+      bcard_back:  r.bcard_back  && r.bcard_back.length  > 100000 ? null : r.bcard_back,
+      sample_photos: null, // ไม่เก็บ sample photos ใน localStorage หลัง load
+    }));
+    saveRecs(mergedLight);renderRecords();
     toast('✅ โหลดสำเร็จ '+merged.length+' records จาก Google Sheets!');
   }catch(e){
     console.warn('loadFromSheets error:',e);
