@@ -1,15 +1,12 @@
 const https = require('https');
 const http  = require('http');
-
-const GS_URL = 'https://script.google.com/a/macros/medpac.co.th/s/AKfycbyG6mxpMCByIt8OKtxENjvU1HttN7UjjuXBak5-jyn2hwqnCZILaFGpIzsk4kFHJ2_h/exec';
-
+const GS_URL = 'https://script.google.com/macros/s/AKfycbyG6mxpMCByIt8OKtxENjvU1HttN7UjjuXBak5-jyn2hwqnCZILaFGpIzsk4kFHJ2_h/exec';
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type':                 'application/json',
 };
-
 module.exports = async function(req, res) {
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -29,7 +26,6 @@ module.exports = async function(req, res) {
     return res.status(500).json({ status:'error', message: err.message });
   }
 };
-
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -38,7 +34,6 @@ function readBody(req) {
     req.on('error', reject);
   });
 }
-
 function request(method, url, body, depth) {
   if (depth > 5) return Promise.reject(new Error('Too many redirects'));
   const lib    = url.startsWith('https') ? https : http;
